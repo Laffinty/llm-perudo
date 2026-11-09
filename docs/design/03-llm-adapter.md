@@ -153,7 +153,7 @@
 | GLM（智谱） | `glm-5.3` | `glm-5.3-flash` | FlashX 高速变体（200 tok/s） | OpenAI 兼容 |
 | Qwen（阿里） | `qwen3.8-max` | `qwen-flash` | `qwen-plus` 均衡主力；型号 ID 以百炼在售列表为准 | OpenAI 兼容 |
 | 豆包（字节） | `doubao-seed-2.1-pro` | `doubao-seed-2.1-turbo` | `doubao-seed-2.0-lite` 超低价批量备选；方舟支持推理接入点 | OpenAI 兼容 |
-| MiniMax | `MiniMax-M2.7` | `MiniMax-M2.7-highspeed` | 全自动前缀缓存 | OpenAI 兼容 |
+| MiniMax | `MiniMax-M3` | `MiniMax-M3.1-Flash` | M3.1-Flash 2026-10-19 发布：200+ tok/s、降价 50%、开源权重；speed 变体是否存在待核 | OpenAI 兼容 |
 
 ### 5.1 DeepSeek 适配器
 
@@ -250,19 +250,19 @@
 
 ### 5.6 MiniMax 适配器
 
-**特性要点**：M2.7 旗舰（百万级上下文、强推理、高指令遵循、低成本）；**`M2.7` 与 `M2.7-highspeed` 双 API 变体（同结果、不同速度）**——天然 Pro/Flash 对；**全自动前缀缓存、零配置**；M2 系传统为交错思考（interleaved thinking）输出形态。
+**特性要点**：M3 旗舰（2026-06-01 发布：前沿编码、agentic 推理、1M 上下文、原生工具调用）；M3.1-Flash（2026-10-19 正式发布，此前自 9-27 起以"太空兔"匿名预演、压测超 200 万亿 token）：新一代 Flash，200+ tok/s 输出、**降价 50%**、1M 上下文、原生多模态 MoE、开源权重；M 系传统为交错思考（interleaved thinking）输出形态。
 
 **针对性设计思路**：
 
-1. **前缀缓存套利**：全自动缓存 + §3 装配顺序规范（稳定前缀在前）= 系统提示与桌局公共前缀几乎零成本重复——长桌局（100 分阈值可达上百局）下成本优势被复利放大。这是 MiniMax 的结构性省钱点，装配规范必须遵守。
+1. **前缀缓存套利**：MiniMax 平台提供自动前缀缓存（M2.7 起为全自动零配置；M3.1 系的命中口径入 §5.7 核对）+ §3 装配顺序规范（稳定前缀在前）= 系统提示与桌局公共前缀几乎零成本重复——长桌局（100 分阈值可达上百局）下成本优势被复利放大。这是 MiniMax 的结构性省钱点，装配规范必须遵守。
 2. **交错思考剥离**：M2 系思考交错出现在正文流中——ResponseParser 为其实现专用剥离钩子（`strip_think_blocks`），剥离文本进附件，绝不混入台词或动作字段。
-3. **highspeed 直配快轨**：`M2.7-highspeed` 即 Flash 轨，无需另选型号。
+3. **M3.1-Flash 直配快轨**：200+ tok/s 让长桌局的等待感趋零；降价 50% 后成为六家快轨的成本标杆之一。
 
 **针对性参数**：
 
 | 参数 | 取值 | 说明 |
 | --- | --- | --- |
-| `speed_variant` | normal / highspeed | 双变体选择 |
+| `speed_variant` | normal / highspeed | 平台速度变体（M3.1 系是否保留 highspeed 档，待 §5.7 核对） |
 | `strip_think_blocks` | true（默认） | 交错思考剥离钩子 |
 | `stable_prefix_layout` | true（默认，强制） | 装配顺序规范守门 |
 
@@ -277,7 +277,7 @@
 | GLM | `thinking.type` 当前结构；Flash/FlashX 的型号 ID |
 | Qwen | `enable_thinking` / `thinking_budget` 在 OpenAI 兼容模式下的传递方式；在售型号 ID（3.7/3.8 系） |
 | 豆包 | Seed 2.1 的 thinking 结构；接入点 vs 型号名现行口径；2.0-lite 是否仍在售 |
-| MiniMax | M2.7 think 块的输出格式；缓存命中口径 |
+| MiniMax | M3 / M3.1-Flash 的 API 型号名与 speed 变体是否保留；think 块输出格式；前缀缓存命中口径 |
 
 ---
 
@@ -363,4 +363,4 @@ thinking = "high"                            # 反杀/投降抉择，思考拉�
 | GLM | [开放平台](https://bigmodel.cn)、[模型概览](https://docs.bigmodel.cn/cn/guide/start/model-overview)、[发布记录](https://docs.bigmodel.cn/cn/update/new-releases) |
 | Qwen | [Qwen3.8-Max 上线公告](https://www.aliyun.com/product/news/30083)、[百炼产品月刊 2026-02](https://developer.aliyun.com/article/1713938)、[Max/Plus/Flash 差异](https://developer.aliyun.com/article/1745443) |
 | 豆包 | [Seed 2.1 发布报道](https://zhuanlan.zhihu.com/p/2053118530242065054)、[豆包 2.0 整理](https://www.53ai.com/news/LargeLanguageModel/2026021429065.html) |
-| MiniMax | [M2.7 官方页](https://www.minimax.io/models/text/m27)、[API Models 文档](https://platform.minimax.io/docs/release-notes/models) |
+| MiniMax | [M3.1-Flash 官方发布](https://www.minimax.io/blog/minimax-m31f)、[M3.1-Flash 模型卡](https://huggingface.co/MiniMaxAI/MiniMax-M3.1-Flash)、[API 文档](https://platform.minimax.io/docs/release-notes/models) |
