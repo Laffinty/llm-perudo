@@ -64,5 +64,10 @@ source = ["perudo"]
 
 [tool.coverage.report]
 show_missing = true
-# 刻意不设 fail_under：P0 阶段尚无 core/engine 实现，过早设阈值会把空骨架判红。
-# 覆盖率门槛按计划 §4.3（G-cov：core/engine 行覆盖 ≥ 95%）留待 P1 内核落地后再收紧。
+# G-cov（计划 §4.3）：core / engine 行覆盖 ≥ 95%。include 过滤报告范围，
+# P3 起的 adapters/host/eval 不在 G-cov 覆盖口径内（计划 §4.3 只锁 core/engine）。
+fail_under = 95
+include = [
+    "src/perudo/core/*",
+    "src/perudo/engine/*",
+]
