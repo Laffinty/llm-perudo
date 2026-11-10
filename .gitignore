@@ -218,3 +218,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# llm-perudo project runtime
+# data/ = 运行时数据根目录（对局流 stream.jsonl / LOG / 评测数据集），布局见 05 §3
+/data/
+# frontend/dist/ = 前端构建产物，由 FastAPI 宿主托管（04 F-05）
+/frontend/dist/
+# frontend/node_modules/ = Vite 前端依赖（P4 落地后生效）
+/frontend/node_modules/

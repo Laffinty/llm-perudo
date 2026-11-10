@@ -264,7 +264,7 @@ P0 ──► P1 ──► P2 ──► P3 ──► P4 ──► P5 ──► P6
 
 | 阶段 | 内容 | 工作量 | 依赖 | 状态 |
 | --- | --- | --- | --- | --- |
-| P0 | 脚手架 | S | — | 未开始 |
+| P0 | 脚手架 | S | — | **已完成（2026-11-10）** |
 | P1 | 规则内核（M1） | M | P0 | 未开始 |
 | P2 | 编排与持久（M2） | L | P1 | 未开始 |
 | P3 | 适配器 SDK + 2 家（03 M4a） | M | P2 | 未开始 |
@@ -276,6 +276,28 @@ P0 ──► P1 ──► P2 ──► P3 ──► P4 ──► P5 ──► P6
 
 > 状态列随施工推进更新，作为施工日志；每阶段完成时附手动验收勾选记录。
 
+### P0 完成记录（2026-11-10）
+
+| P0 任务 | 产出 | 状态 |
+| --- | --- | --- |
+| uv 初始化 + `pyproject.toml`（ruff/mypy/pytest 配置） | `pyproject.toml`、`uv.lock`（51 包）、`src/perudo/__init__.py` | 完成 |
+| CI：lint + type + test + 覆盖率四门禁 | `.github/workflows/ci.yml`（6 个作业，见 §8 修订记录 R-01） | 完成 |
+| `tests/traceability.md` 矩阵骨架（先建表，P1 填充） | `tests/traceability.md`（R-01 ~ R-68 共 **68** 行，全 `pending`）+ `scripts/check_traceability.py` | 完成 |
+| `.gitignore` 增补 `data/`、`frontend/dist/` | 另增 `/frontend/node_modules/`（P4 Vite 前端依赖，防入库） | 完成 |
+
+**本地门禁实跑记录**（与 CI 同一套命令，全部 exit 0）：
+
+| 门禁 | 命令 | 结果 |
+| --- | --- | --- |
+| G-lint | `uv run ruff check .` / `uv run ruff format --check .` | All checks passed / 5 files already formatted |
+| G-type | `uv run mypy src/perudo` | Success: no issues found in 1 source file |
+| G-test | `uv run pytest` | 2 passed |
+| G-cov | `uv run pytest --cov=perudo --cov-report=term-missing --cov-report=xml` | 2 passed，coverage.xml 已产出 |
+| G-trace | `uv run python scripts/check_traceability.py` | 矩阵尚未启用（P1 待填充），68 条规则待填 |
+| 依赖边界 | `uv run python scripts/check_imports.py` | 通过（core/engine 尚未落地，暂未生效） |
+
+**手动验收**：P0 无真实 API / 浏览器环节，全部为机器可验项，已全部实跑通过。
+
 ---
 
 ## 7. 变更纪律
@@ -283,3 +305,25 @@ P0 ──► P1 ──► P2 ──► P3 ──► P4 ──► P5 ──► P6
 1. **实现不得偏离设计稿**：发现设计疑义/缺口 → 回对应设计文档登记并走业主裁决（对齐既定工作方式），裁决结果先改设计文档、再改代码。
 2. **契约只增不删**（02 A-20）：`PlayerView`、事件类型、附件信封字段的新增走评审，删除禁止。
 3. **计划状态更新**只在本文 §6 表格；阶段验收标准的变更须在本文登记修订记录。
+
+---
+
+## 8. 修订记录
+
+### R-01 P0 施工（2026-11-10）
+
+| # | 变更 | 依据 | 说明 |
+| --- | --- | --- | --- |
+| R-01.1 | CI 作业由「四门禁」扩为 **6 个** | §4.3 门禁总表 + §2.3 依赖边界门禁化 | 在 lint/type/test/cov/trace 之外新增 `deps` 作业，跑 `scripts/check_imports.py`（core/engine 禁三方依赖、禁 `random` 直调、禁时钟与网络直调，依据 02 A-19 / A-10 / A-14）。该检查在 P0 判定为「暂未生效」并通过，P1 内核落地后自动生效，无需再改 CI。 |
+| R-01.2 | GitHub Actions 版本统一升到 **node24 档位** | 运行时事实 | `actions/checkout@v7`、`actions/setup-python@v7`、`actions/upload-artifact@v7`。理由：Node.js 20 已于 2026-09-16 从 GitHub runner 移除，旧版 action（checkout@v4 / setup-python@v5 / upload-artifact@v4）仍声明 `node20`，存在运行时不兼容隐患。已核验 upload-artifact v4→v7 的输入接口（`name` / `path` / `if-no-files-found`）未变，行为兼容。 |
+| R-01.3 | ruff 排除 `docs/` 目录 | 工具链事实 | 实测 ruff 0.17 会格式化 Markdown 内的 Python 代码块，若纳入则 `ruff format .` 将改写中文设计稿、纯文档改动也会把 G-lint 打红。 |
+| R-01.4 | `pyproject.toml` 声明 `license = "GPL-2.0-only"` | 仓库 `LICENSE` | `LICENSE` 为 GPL v2 原文。「only / or-later」属法律口径，**留待业主确认**；若应为 `or-later`，改一个词即可，不影响依赖锁。 |
+| R-01.5 | 追溯矩阵扩展至 R-68 | `01-game-rules.md` §9.3 | 计划 §4.1 原表述为「R-60~R-67 边角」，而设计稿实际定义到 **R-68（反弹）**。矩阵按设计稿实况登记至 R-68；**计划 §4.1 的编号上界待同步修订**（见 §8 待裁决项 D-01）。 |
+
+### 待裁决项（登记，不自行改设计稿）
+
+| # | 事项 | 事实 | 影响的阶段 |
+| --- | --- | --- | --- |
+| D-01 | 计划 §4.1「R-60~R-67」与设计稿实际 R-68 不一致 | `01-game-rules.md` §9.3 定义了 R-68（反弹，标注为「变体，基线不实现」）；矩阵已按 R-68 登记 | P1 填表前需定：计划 §4.1 的编号上界改为 R-68，还是设计稿删去 R-68 |
+| D-02 | 设计稿 `01-game-rules.md` §3 流程表的规则区间与后续章节不一致 | §3 汇总表写「⑥计数 R-34~R-38、⑦判定 R-39、⑧结算 R-40~R-47」，但 §7 实际定义 R-34~R-36 为反杀/投降、§8.3 才是判定 R-45、§9.1 才是基础结算 R-46 起。追溯矩阵的「规则出处」一律指向**实际定义条款** | P1 填表前需定：§3 汇总表同步更新，还是以实际条款为准并在设计稿加注 |
+| D-03 | 变体规则（基线不实现）的追溯口径 | R-44、R-58、R-59、R-67、R-68 标注「变体，基线不实现」。追溯矩阵 §0.8 已定：其「覆盖」= 守护性测试（证明基线下不被触发），而非功能测试 | 已在本轮定口径并写入矩阵；若业主要求改口径（如变体一律不纳入孤儿检查），需同步改检查器 |
