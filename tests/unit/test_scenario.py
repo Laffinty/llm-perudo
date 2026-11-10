@@ -22,7 +22,6 @@ from perudo.core.legality import (
 )
 from perudo.core.opening import opening_caller
 from perudo.core.settlement import judge, settle_stake
-
 from perudo.core.types import (
     Bid,
     BidAction,

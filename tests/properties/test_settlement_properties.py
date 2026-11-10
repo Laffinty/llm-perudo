@@ -20,7 +20,6 @@ from perudo.core.settlement import (
     judge,
     settle_stake,
 )
-
 from perudo.core.types import (
     ALL_FACES,
     Bid,

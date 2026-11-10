@@ -124,10 +124,14 @@ def run_pytest() -> bool:
 
 
 def apply_mutation(path: Path, find: str, replace: str) -> None:
-    """把 ``find`` 首次出现替换为 ``replace`` 并写回。"""
+    """把 ``find`` 首次出现替换为 ``replace`` 并写回。
+
+    写回必须带 ``newline=""``：Windows 上默认的行尾翻译会把 LF 改写成 CRLF，
+    污染工作区行尾（ruff 的 I001 在 CRLF 文件上不触发，会静默漏检）。
+    """
     source = path.read_text(encoding="utf-8")
     mutated = source.replace(find, replace, 1)
-    path.write_text(mutated, encoding="utf-8")
+    path.write_text(mutated, encoding="utf-8", newline="")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -149,13 +153,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  锚点：{mutation.find!r}", file=sys.stderr)
             return 2
         backup = path.with_suffix(path.suffix + MUTATED_SUFFIX)
-        backup.write_text(source, encoding="utf-8")
+        backup.write_bytes(path.read_bytes())  # 逐字节备份，恢复时不经行尾翻译
         killed = False
         try:
             apply_mutation(path, mutation.find, mutation.replace)
             killed = not run_pytest()
         finally:
-            path.write_text(backup.read_text(encoding="utf-8"), encoding="utf-8")
+            path.write_bytes(backup.read_bytes())  # 逐字节恢复
             backup.unlink()
         mark = "已杀灭" if killed else "存活 ✗"
         print(f"  {mutation.mid} {mutation.desc} —— {mark}")
