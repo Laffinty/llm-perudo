@@ -132,13 +132,13 @@
   "provider": "deepseek", "model": "deepseek-v4-pro",
   "latency_ms": 1840,
   "usage": {"input": 3120, "output": 210, "reasoning": 640},
-  "thinking_text": "……（剥离出的思考全文，永不进任何玩家视图）",
+  "thinking_text": "……（剥离出的思考全文；不进任何 LLM 玩家的上下文；呈现按 04 F-06：仅 EVE 观战流实时直出，PVE 实时面不提供，复盘档全量留存）",
   "parse_retries": 0, "self_check_retries": 1,
   "degrade_reason": null
 }
 ```
 
-用途：05 评测工具的成本面与合规面统计（02 §8）；`thinking_text` 是"决策面深度点评"的未来原料（属 05，本层只负责留存）。
+用途：05 评测工具的成本面与合规面统计（02 §8）；`thinking_text` 是"决策面深度点评"的未来原料（属 05），也是 04 F-06"内心戏"的数据源——本层只负责留存与上报，呈现纪律由 04 定义（仅 EVE 观战实时直出；PVE 实时面不提供、复盘档全量留存；科研优先原则 F-10）。
 
 ---
 
