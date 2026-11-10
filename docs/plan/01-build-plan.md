@@ -298,6 +298,20 @@ P0 ──► P1 ──► P2 ──► P3 ──► P4 ──► P5 ──► P6
 
 **手动验收**：P0 无真实 API / 浏览器环节，全部为机器可验项，已全部实跑通过。
 
+**首轮 GitHub Actions 实跑（2026-11-10，run id 42763507250，结论 `success`）**：
+
+| 作业 | 结论 | 对应本地命令 |
+| --- | --- | --- |
+| 代码风格 · ruff | success | `uv run ruff check .` + `uv run ruff format --check .` |
+| 类型检查 · mypy | success | `uv run mypy src/perudo` |
+| 单元测试 · pytest · Python 3.12 | success | `uv run pytest`（3.12 档） |
+| 单元测试 · pytest · Python 3.13 | success | `uv run pytest`（3.13 档） |
+| 覆盖率 · pytest-cov | success | `uv run pytest --cov=perudo --cov-report=term-missing --cov-report=xml` |
+| 追溯矩阵 · 孤儿检查 | success | `uv run python scripts/check_traceability.py` |
+| 依赖边界 · 零三方依赖 | success | `uv run python scripts/check_imports.py` |
+
+7 个作业实例（6 个作业，test 矩阵展开为 3.12 / 3.13 两档）全部通过。由此首次验证了三处本地不可验的面：ubuntu runner 环境、**Python 3.12 矩阵档**、干净 runner 上的 `uv sync --frozen` 安装行为；同时验证 §8 R-01.2 的 action 升版（node24 档）无兼容问题。
+
 ---
 
 ## 7. 变更纪律
