@@ -23,13 +23,19 @@ MUTATED_SUFFIX = ".mutation_backup"
 
 @dataclass(frozen=True)
 class Mutation:
-    """一条变异：把 ``find`` 首次出现替换为 ``replace``，测试必须变红。"""
+    """一条变异：把 ``find`` 首次出现替换为 ``replace``，定向测试面必须变红。
+
+    ``tests`` 为捕获面（node id / 文件路径）——内核变异的捕获测试全部在
+    tests/unit 的规则域文件与属性穷举中；定向运行让 G-mut 时长不随
+    e2e/属性套件膨胀而线性变慢（计划 R-04 登记）。
+    """
 
     mid: str
     desc: str
     file: str
     find: str
     replace: str
+    tests: tuple[str, ...]
 
 
 MUTATIONS: tuple[Mutation, ...] = (
@@ -39,6 +45,7 @@ MUTATIONS: tuple[Mutation, ...] = (
         file="src/perudo/core/legality.py",
         find="        need = 2 * current.count",
         replace="        need = current.count",
+        tests=("tests/unit/test_bidding.py", "tests/properties/test_legality_properties.py"),
     ),
     Mutation(
         mid="V-2",
@@ -46,6 +53,7 @@ MUTATIONS: tuple[Mutation, ...] = (
         file="src/perudo/core/counting.py",
         find="        return 6 if cfg.leopard_bonus else n_called + n_ones",
         replace="        return 7 if cfg.leopard_bonus else n_called + n_ones",
+        tests=("tests/unit/test_counting.py", "tests/properties/test_counting_properties.py"),
     ),
     Mutation(
         mid="V-3",
@@ -62,6 +70,7 @@ MUTATIONS: tuple[Mutation, ...] = (
             "        )\n"
             "        if n_called == 5:"
         ),
+        tests=("tests/unit/test_counting.py", "tests/properties/test_counting_properties.py"),
     ),
     Mutation(
         mid="V-4",
@@ -69,6 +78,7 @@ MUTATIONS: tuple[Mutation, ...] = (
         file="src/perudo/core/settlement.py",
         find="    return count >= bid.count",
         replace="    return count < bid.count",
+        tests=("tests/unit/test_judging.py", "tests/properties/test_settlement_properties.py"),
     ),
     Mutation(
         mid="V-5",
@@ -76,6 +86,7 @@ MUTATIONS: tuple[Mutation, ...] = (
         file="src/perudo/core/settlement.py",
         find="            codes = max(1, codes)",
         replace="            codes = int(multiplier)",
+        tests=("tests/unit/test_settling.py", "tests/properties/test_settlement_properties.py"),
     ),
     Mutation(
         mid="V-6",
@@ -93,6 +104,7 @@ MUTATIONS: tuple[Mutation, ...] = (
             "        return LegalityVerdict.ok()  # 转斋：点数任意，"
             '不受"同数量点数须更大"约束（R-20）'
         ),
+        tests=("tests/unit/test_bidding.py", "tests/properties/test_legality_properties.py"),
     ),
     Mutation(
         mid="V-7",
@@ -100,6 +112,7 @@ MUTATIONS: tuple[Mutation, ...] = (
         file="src/perudo/core/legality.py",
         find="        if state.ones_called:",
         replace="        if False:",
+        tests=("tests/unit/test_bidding.py", "tests/properties/test_legality_properties.py"),
     ),
     Mutation(
         mid="V-8",
@@ -107,14 +120,20 @@ MUTATIONS: tuple[Mutation, ...] = (
         file="src/perudo/core/legality.py",
         find="    return -(-3 * player_count // 2)  # ⌈1.5N⌉ 的整数实现（N=5 时取 8，R-14）",
         replace="    return 3 * player_count // 2  # ⌈1.5N⌉ 的整数实现（N=5 时取 8，R-14）",
+        tests=("tests/unit/test_bidding.py", "tests/properties/test_legality_properties.py"),
     ),
 )
 
 
-def run_pytest() -> bool:
-    """跑全量测试；返回是否全绿。"""
+def run_pytest(tests: tuple[str, ...] = ()) -> bool:
+    """跑指定测试面（缺省 = tests/unit 全部）；返回是否全绿。
+
+    基线预检与杀灭判定都用定向面：内核变异的捕获测试全部在规则域文件中，
+    让 G-mut 时长不随 e2e/属性套件膨胀（计划 R-04）。
+    """
+    targets = list(tests) if tests else ["tests/unit"]
     result = subprocess.run(
-        ["uv", "run", "pytest", "-q", "--no-header"],
+        ["uv", "run", "pytest", "-q", "--no-header", *targets],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
@@ -138,7 +157,14 @@ def main(argv: list[str] | None = None) -> int:
     """命令行入口。返回进程退出码（0 通过 / 1 有存活变异 / 2 环境错误）。"""
     del argv  # 预留 CLI 参数位；当前无需参数
 
-    print("基线预检：全量测试须先全绿，变异杀灭判定才有意义……")
+    # 自愈：上次进程被杀可能留下 .mutation_backup——启动时先全部还原
+    for leftover in sorted(REPO_ROOT.glob("src/**/*.mutation_backup")):
+        target = leftover.with_suffix("")
+        target.write_bytes(leftover.read_bytes())
+        leftover.unlink()
+        print(f"自愈：还原被中断的变异残留 {leftover.name} -> {target.name}")
+
+    print("基线预检（定向面：tests/unit）须先全绿，变异杀灭判定才有意义……")
     if not run_pytest():
         print("错误：基线测试未全绿，请先修复再跑变异检查。", file=sys.stderr)
         return 2
@@ -157,7 +183,7 @@ def main(argv: list[str] | None = None) -> int:
         killed = False
         try:
             apply_mutation(path, mutation.find, mutation.replace)
-            killed = not run_pytest()
+            killed = not run_pytest(mutation.tests)
         finally:
             path.write_bytes(backup.read_bytes())  # 逐字节恢复
             backup.unlink()

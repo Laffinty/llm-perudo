@@ -1,6 +1,7 @@
 # llm-perudo CI 门禁 —— 依据 docs/plan/01-build-plan.md §4.3 门禁总表与 §2.3 依赖边界
 # P0 阶段落地：G-lint / G-type / G-test / G-cov / G-trace 五个作业 + 依赖边界检查（§2.3 import 白名单）
-# P1 起新增 G-mut（变异清单 V-1~V-8 全红，scripts/check_mutations.py）；G-e2e 待 P2 编排就位
+# P1 起新增 G-mut（变异清单 V-1~V-8 全红，scripts/check_mutations.py）
+# P2 起新增 G-e2e（脚本机器人全桌冒烟，计划 §4.3"每次合并跑"）
 # action 版本：checkout / setup-python / upload-artifact 统一取 node24 档位
 # （Node 20 已于 2026-09-16 从 GitHub runner 移除，旧版 action 声明 node20 存在运行时不兼容隐患）
 
@@ -131,6 +132,32 @@ jobs:
           name: coverage-xml-py313
           path: coverage.xml
           if-no-files-found: warn
+
+  e2e:
+    name: 端到端 · bot 全桌冒烟
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.13"
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7
+
+      - name: 安装 uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: 安装 Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: 安装依赖（锁文件固定版本）
+        run: uv sync --frozen
+
+      # 计划 §4.3 G-e2e（P2 起生效）：脚本机器人全桌冒烟，每次合并跑
+      - name: 端到端冒烟
+        run: uv run pytest tests/e2e -q
 
   mut:
     name: 变异清单 · V-1~V-8 全红

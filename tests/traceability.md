@@ -123,7 +123,7 @@
 | R-04 | 行动方向为顺时针（逆时针为民间变体） | 01 §2 | tests/unit/test_table.py::test_r04_clockwise_baseline_and_seat_geometry | covered | — |
 | R-05 | 每局由上一局输家先起叫；首局由房主指定或随机 | 01 §2 | tests/unit/test_bidding.py::test_r05_opening_caller_loser_first_with_a05_tiebreak | covered | 多输家并列按 A-05 取先；首局随机在引擎层（P2） |
 | R-06 | 局前须约定 1 码的量与是否启用进阶加成 | 01 §2 | tests/unit/test_table.py::test_r06_rule_config_defaults_match_section12 | covered | §12 十八项全部入 RuleConfig，逐字段断言基线默认 |
-| R-07 | 每人摇 5 颗骰扣在骰盅下，只允许自己查看 | 01 §4 | tests/unit/test_table.py::test_r07_hand_frozen_and_private_by_contract | covered | 可数部分（恰 5 颗/不可变）；"只允许自己查看"由 P2 信息隔离属性测试补强 |
+| R-07 | 每人摇 5 颗骰扣在骰盅下，只允许自己查看 | 01 §4 | tests/unit/test_table.py::test_r07_hand_frozen_and_private_by_contract; tests/properties/test_replay_properties.py::test_information_isolation_every_view | covered | 可数部分（恰 5 颗/不可变）；"只允许自己查看"由 P2 信息隔离属性测试补强（全决策点穷举取证） |
 | R-08 | 叠骰必须当众开盅检查后重新摇 | 01 §4 | tests/unit/test_table.py::test_r08_stacked_never_representable_in_digital_table | covered | 数字桌面无叠骰，规则位保留（02 §2.4.1）；穷举守护其不触发 |
 | R-09 | 散骰（5 颗点数各不相同）必须重摇 | 01 §4 | tests/unit/test_table.py::test_r09_scattered_must_reshake_with_variants; tests/unit/test_counting.py::test_r61_and_r09_variant_count_zero_switches | covered | 基线必重摇 + 「计 0」变体两态 |
 | R-10 | 任何人可公开验骰；验出叠骰/散骰按 R-08/R-09 处理 | 01 §4 | tests/unit/test_table.py::test_r10_reshake_check_is_public_idempotent_verification | covered | 数字桌面验骰即自动校验（02 §2.4.1）：判定为公开幂等纯函数 |

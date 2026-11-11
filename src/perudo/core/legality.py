@@ -10,10 +10,12 @@
 from __future__ import annotations
 
 from perudo.core.types import (
+    ALL_FACES,
     Bid,
     BidAction,
     BidKind,
     CallState,
+    ChallengeAction,
     ChallengeKind,
     Direction,
     Face,
@@ -26,12 +28,16 @@ from perudo.core.types import (
     StraightPolicy,
     ZhaiState,
     bid_count_cap,
+    total_dice,
 )
 
 __all__ = [
     "apply_bid",
     "bid_legal",
     "challenge_legal",
+    "counter_battle_options",
+    "enumerate_bid_actions",
+    "enumerate_challenge_actions",
     "face_beats",
     "min_opening_bid",
     "needs_reshake",
@@ -327,3 +333,99 @@ def recounter_target(
             return seat
         seat = next_seat(seat, player_count, cfg)
     return None
+
+
+def counter_battle_options(can_recounter: bool) -> frozenset[ResponseKind]:
+    """被反杀后原杀者的选项（R-36）：开盅摊牌，或再反杀一次（不可再被反杀）。
+
+    ``can_recounter`` = ``recounter_target(...) is not None``（存在下一位叫骰者）。
+    投降不在此列：R-35 投降属于被杀者，原杀者被反杀后只能摊牌或加注。
+    """
+    if can_recounter:
+        return frozenset({ResponseKind.REVEAL, ResponseKind.RECOUNTER})
+    return frozenset({ResponseKind.REVEAL})
+
+
+def enumerate_bid_actions(
+    state: CallState | None,
+    current: Bid | None,
+    player_count: int,
+    cfg: RuleConfig,
+) -> tuple[BidAction, ...]:
+    """枚举当前叫骰合法动作集（02 §3.1：合法动作集枚举是唯一权威）。
+
+    ``current is None``（或 ``state`` 为 ``None``）→ 首叫口径（R-11~R-14）；
+    否则接叫口径（五步短路，R-24~R-28）。结果按（叫法，数量，面值）升序排列，
+    完全确定。叫量上界取 R-64 配置上限；``UNLIMITED`` 变体按 5N 枚举
+    （叫超在场骰子总数无实际意义，登记于计划 R-04）。
+    """
+    cap = bid_count_cap(player_count, cfg)
+    upper = cap if cap is not None else total_dice(player_count)
+    out: list[BidAction] = []
+    if current is None or state is None:
+        for kind, floor in (
+            (BidKind.NORMAL, min_opening_bid(player_count, False)),
+            (BidKind.ZHAI, min_opening_bid(player_count, True)),
+        ):
+            for x in range(floor, upper + 1):
+                for face in ALL_FACES:
+                    out.append(BidAction(kind, Bid(x, face)))
+        return tuple(out)
+    # 常规接叫（R-17/R-18）：数量 ≥ 现叫；同数量时点数须更强
+    for x in range(current.count, upper + 1):
+        for face in ALL_FACES:
+            if bid_legal(
+                BidAction(BidKind.NORMAL, Bid(x, face)), state, current, player_count, cfg
+            ).legal:
+                out.append(BidAction(BidKind.NORMAL, Bid(x, face)))
+    # 转斋（R-20）：仅 FLY 态，X' ≥ X0，点数任意
+    if state.zhai is ZhaiState.FLY:
+        for x in range(current.count, upper + 1):
+            for face in ALL_FACES:
+                out.append(BidAction(BidKind.ZHAI, Bid(x, face)))
+    # 飞斋（R-21/R-23）：仅 DEAD 未过 1 态，X' ≥ 2×X0
+    if state.zhai is ZhaiState.DEAD and not state.ones_called:
+        for x in range(2 * current.count, upper + 1):
+            for face in ALL_FACES:
+                out.append(BidAction(BidKind.FEI, Bid(x, face)))
+    return tuple(out)
+
+
+def enumerate_challenge_actions(
+    initiator: int,
+    last_callers: tuple[int, ...],
+    player_count: int,
+    cfg: RuleConfig,
+) -> tuple[ChallengeAction, ...]:
+    """枚举当前杀类合法动作（R-29 ~ R-32），按（类型，目标）确定性排序。
+
+    连杀目标按"末尾连续 K 个不同叫骰者"枚举（K ≥ 2；R-31 的"位"以人为单位）。
+    """
+    out: list[ChallengeAction] = []
+    predecessor = previous_seat(initiator, player_count, cfg)
+    caller_set = set(last_callers)
+    if last_callers and last_callers[-1] == predecessor:
+        out.append(ChallengeAction(ChallengeKind.OPEN, (predecessor,)))
+    for target in sorted(caller_set):
+        if target != predecessor:
+            out.append(ChallengeAction(ChallengeKind.JUMP, (target,)))
+    # 连杀：从最近叫骰者向前收集不同玩家（本局不可能同一位连续叫两次——轮转保证）
+    distinct_tail: list[int] = []
+    for caller in reversed(last_callers):
+        if caller not in distinct_tail:
+            distinct_tail.append(caller)
+        else:
+            break
+    for k in range(2, len(distinct_tail) + 1):
+        targets = tuple(reversed(distinct_tail[:k]))
+        if challenge_legal(
+            ChallengeKind.MULTI, initiator, targets, last_callers, player_count, cfg
+        ).legal:
+            out.append(ChallengeAction(ChallengeKind.MULTI, targets))
+    if last_callers:
+        sweep_targets = tuple(s for s in range(player_count) if s != initiator)
+        if challenge_legal(
+            ChallengeKind.SWEEP, initiator, sweep_targets, last_callers, player_count, cfg
+        ).legal:
+            out.append(ChallengeAction(ChallengeKind.SWEEP, sweep_targets))
+    return tuple(out)

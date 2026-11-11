@@ -21,6 +21,7 @@ __all__ = [
     "BidCapPolicy",
     "BidKind",
     "CallState",
+    "ChallengeAction",
     "ChallengeKind",
     "Direction",
     "DrinkAlongResult",
@@ -161,11 +162,25 @@ class ChallengeKind(Enum):
 
 
 class ResponseKind(Enum):
-    """应牌三选一（R-33）：开盅清点 / 反杀 / 投降。"""
+    """应牌动作（R-33 三选一 + R-36 再反杀，P2 增补登记于计划 R-04）。
+
+    - 被杀者三选一：REVEAL / COUNTER / SURRENDER（R-33/R-34）；
+    - RECOUNTER 仅出现在"原杀者被反杀后"的应对（R-36：再反杀一次，
+      不可再被反杀）——见 ``legality.counter_battle_options``。
+    """
 
     REVEAL = "reveal"
     COUNTER = "counter"
+    RECOUNTER = "recounter"  # 再反杀（R-36；契约增补 A-20）
     SURRENDER = "surrender"
+
+
+@dataclass(frozen=True)
+class ChallengeAction:
+    """杀类动作 = 类型 + 目标集（R-29 ~ R-32；目标按集合语义，允许乱序）。"""
+
+    kind: ChallengeKind
+    targets: tuple[int, ...]
 
 
 class Direction(Enum):
