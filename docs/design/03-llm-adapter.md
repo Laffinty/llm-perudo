@@ -165,12 +165,13 @@
 2. **思考分层直通**：V4 thinking 支持分级（低/中/高/最高），映射 `phase_overrides.thinking`——常规跟叫 `low`，应牌链（反杀/投降抉择）`high`。推理 token 计费，分层即省钱。
 3. **退役名拒绝**：配置校验直接拒绝 `deepseek-chat` / `deepseek-reasoner`（已退役），给出迁移提示——防旧教程抄来的配置静默降级。
 
-**针对性参数**：
+**针对性参数**（2026-11-13 按 §5.7 核对修订）：
 
 | 参数 | 取值 | 说明 |
 | --- | --- | --- |
-| `thinking_level` | off / low / mid / high / max | 映射 V4 思考层级；per-phase |
-| `temperature_matrix` | 阶段→温度 | 显式成表（B-05），评测锁定 |
+| `thinking_type` | enabled / disabled（per-phase） | 请求体 `thinking: {type}`；默认 enabled，`disabled` = 非思考模式（实测可用） |
+| `reasoning_effort` | low / high / max（per-phase） | 思考深度档位（默认 high；社区报告 low/medium 可能被静默映射，有效档以 high/max 为主） |
+| `temperature_matrix` | 阶段→温度 | 显式成表（B-05），评测锁定；**注意：思考模式下 temperature 被服务端忽略（不报错）**——温度矩阵仅对 `disabled`（非思考）档生效；非思考模式官方推荐 1.0 |
 | `reject_legacy_names` | true（默认） | 退役型号守门 |
 
 ### 5.2 MiMo 适配器（小米）
@@ -200,15 +201,15 @@
 **针对性设计思路**：
 
 1. **Flash 轨当批量评测默认**：价格与速度优势全六家前列（FlashX 200 tok/s ≈ 桌感无等待），PVE 界面未上前的冒烟测试也用它。
-2. **thinking 开关按阶段直通**：GLM 系 `thinking: {type: enabled/disabled}` 映射 phase_overrides——与 B-05 思想零阻抗。
+2. **思考深度按阶段直通（2026-11-13 按 §5.7 核对修订）**：**GLM-5.3 / Flash / FlashX 强制思考——`thinking: {type: "disabled"}` 会直接报错**（GLM-5.2 及更早才支持 enabled/disabled 切换）；5.3 系改用 `reasoning_effort`（low / high / max，默认 max）控制深度。phase_overrides 的 thinking 抽象档映射：off/low → low、mid/high → high、auto → 不传（走默认 max）；"真关思考"在 5.3 系不可达，属已知降级（B-05 的"常规叫省"由 low 档承接）。
 3. **1M 上下文 → 呈现参数放开**：`context_presentation = full` + `legal_actions_presentation = enumerate` 作为 GLM 推荐默认，全量流水喂饱，博弈信息最全（与 02 §9"上下文预算是适配层参数"呼应）。
 
 **针对性参数**：
 
 | 参数 | 取值 | 说明 |
 | --- | --- | --- |
-| `thinking_type` | enabled / disabled（per-phase） | 映射 GLM thinking 结构 |
-| `use_flashx` | bool | Flash 轨下选 FlashX 高速变体 |
+| `reasoning_effort` | low / high / max（per-phase） | **5.3 系**思考深度（`thinking.type: disabled` 已不可用，见上）；GLM-5.2 及以下仍走 `thinking.type` |
+| `use_flashx` | bool | Flash 轨下选 FlashX 高速变体（型号 ID `glm-5.3-flashx`，已核对） |
 | `full_presentation` | true（推荐默认） | 放开全量呈现三参数 |
 
 ### 5.4 Qwen 适配器（阿里）
@@ -278,6 +279,25 @@
 | Qwen | `enable_thinking` / `thinking_budget` 在 OpenAI 兼容模式下的传递方式；在售型号 ID（3.7/3.8 系） |
 | 豆包 | Seed 2.1 的 thinking 结构；接入点 vs 型号名现行口径；2.0-lite 是否仍在售 |
 | MiniMax | M3 / M3.1-Flash 的 API 型号名与 speed 变体是否保留；think 块输出格式；前缀缓存命中口径 |
+
+### 5.7.1 核对结果回填
+
+**DeepSeek（核对日 2026-11-13，来源：官方 API 文档 thinking_mode 指南、HuggingFace V4-Pro 模型卡、社区实测）**：
+
+| 核对项 | 结果 | 对设计的影响 |
+| --- | --- | --- |
+| thinking 开关 | 请求体 `thinking: {type: "enabled"/"disabled"}`；**默认 enabled**，`disabled` = 非思考模式可用 | §5.1 参数落定：`thinking_type` per-phase |
+| 思考深度 | `reasoning_effort: low / high / max`（默认 high；社区报告 low/medium 档可能被静默映射，有效档以 high/max 为主） | B-05 阶段映射：常规叫 low/disabled、应牌 high |
+| 温度 | **思考模式下 temperature 被忽略（不报错）**；非思考模式官方推荐 1.0、低温度可能压塌推理链 | 温度矩阵仅对非思考档生效（§5.1 已修订）；评测锁定逻辑不变 |
+| 退役名 | `deepseek-chat` / `deepseek-reasoner` 仍为退役口径 | `reject_legacy_names` 守门不变 |
+
+**GLM（核对日 2026-11-13，来源：智谱官方文档深度思考/思考模式页、GLM-5.3 模型页、Z.AI 英文文档、腾讯云调用指南）**：
+
+| 核对项 | 结果 | 对设计的影响 |
+| --- | --- | --- |
+| thinking.type | **GLM-5.3 / Flash / FlashX 强制思考：`{type: "disabled"}` 直接报错**；GLM-5.2 及更早仍支持 enabled/disabled | §5.3 已修订：5.3 系弃用 `thinking_type`，改 `reasoning_effort` |
+| 思考深度 | `reasoning_effort: low / high / max`（默认 max） | B-05 映射：off/low→low、mid/high→high、auto→默认；"真关思考"不可达（已知降级） |
+| Flash/FlashX 型号 ID | `glm-5.3-flash` / `glm-5.3-flashx`（腾讯云在售列表确认） | `use_flashx` 落定 |
 
 ---
 

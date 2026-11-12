@@ -267,7 +267,7 @@ P0 ──► P1 ──► P2 ──► P3 ──► P4 ──► P5 ──► P6
 | P0 | 脚手架 | S | — | **已完成（2026-11-10）** |
 | P1 | 规则内核（M1） | M | P0 | **已完成（2026-11-11）** |
 | P2 | 编排与持久（M2） | L | P1 | **已完成（2026-11-12）** |
-| P3 | 适配器 SDK + 2 家（03 M4a） | M | P2 | 未开始 |
+| P3 | 适配器 SDK + 2 家（03 M4a） | M | P2 | **已完成（2026-11-13，离线口径；真实 API 冒烟持键待业主执行）** |
 | P4 | 宿主 + EVE 观战（04 W1） | M | P2、P3 | 未开始 |
 | P5 | PVE + LOG（04 W2/W3） | M | P4 | 未开始 |
 | P6 | 其余 4 家（03 M4b） | M | P3 | 未开始（可与 P4/P5 并行） |
@@ -374,6 +374,29 @@ P0 ──► P1 ──► P2 ──► P3 ──► P4 ──► P5 ──► P6
 
 **已知运行时长**：全量 pytest ≈ 8.5 min（e2e bot 局为主，CI 可接受）；G-mut 已定向化到规则域测试面（≈ 1 min），不随 e2e 膨胀。
 
+### P3 完成记录（2026-11-13）
+
+| P3 任务 | 产出 | 状态 |
+| --- | --- | --- |
+| `adapters/sdk/`（03 §1.1 六件套） | config（03 §2 参数骨架 + §7 TOML 装载 + env 密钥解析 B-08）/ context（提示词装配：稳定前缀在前 + 防注入引用块 + enumerate/constraints 两呈现模式）/ parsing（JSON 宽容提取 + `<think>` 块剥离，思考绝不混入动作/台词）/ transport（OpenAI 兼容 httpx + 网络重试指数退避，03 §8）/ ledger（03 §4 信封 8 字段 + B-07 预算累计）/ tuning（各家差异点收口 B-03）/ player（LLMPlayer = 02 §4 玩家契约实现） | 完成 |
+| `adapters/deepseek/`（03 §5.1） | `thinking.type` 开关 + `reasoning_effort` 分层（N3-01 核对）、温度矩阵注记（思考档被服务端忽略）、退役名守门 | 完成 |
+| `adapters/glm/`（03 §5.3） | 5.3 系 `reasoning_effort`（强制思考，N3-01 核对）、Flash/FlashX、full_presentation 放开 | 完成 |
+| 配置装载（03 §7） | `examples/players/ds_pro_1.toml`、`glm_flash_1.toml`；`load_player_config` | 完成 |
+| 附件信封（03 §4） | 8 字段信封 → `Decision.attachments`（单键 JSON 字符串，引擎原样入评测层） | 完成 |
+
+**验收标准对账**（§3 P3 表逐条）：
+
+| 验收标准 | 锚点 | 结果 |
+| --- | --- | --- |
+| DeepSeek / GLM 真实 API vs 脚本机器人完整局跑通 | 03 M4a | **离线口径全通**（EchoTransport 全桌局 + 网络抖动重试 + 解析耗尽降级）；真实冒烟 3 例已实现（单决策两家 + 双 LLM vs bots 短局），`skipif` 无 key 自动跳过——**持键执行属手动验收（§4.4），命令见测试文件 docstring** |
+| 附件信封字段齐全；thinking 剥离正确 | 03 §4 | ✓ 单测断言 8 字段全齐 + think 块/分离 reasoning 双路径剥离 |
+| 自检循环不消耗引擎纠错预算 | 03 B-04 | ✓ 集成单测：注入非法动作 → 自检内部消化 → 引擎 DecisionFacts correction_count 全 0 |
+| 离线 mock 测试全绿（真实冒烟独立标记可跳过） | 03 §4.4 | ✓ 27 passed + 3 skipped（无 key） |
+
+**N3-01 核对结果**（2026-11-13，已回填 03 §5.7.1，来源见该节）：DeepSeek 思考开关为 `thinking:{type}`、深度为 `reasoning_effort`（low/high/max）、思考档 temperature 被忽略；GLM-5.3 系**强制思考**（`disabled` 报错）改用 `reasoning_effort`。两处均构成对 03 §5.1/§5.3 参数表的修订（已同步）。
+
+**门禁**：G-lint ✓ / G-type ✓（strict 31 文件）/ G-test ✓（**191 passed + 3 skipped**）/ G-trace ✓ 68 covered / G-mut ✓ 定向全杀灭 / 依赖边界 ✓ / G-e2e ✓。
+
 ---
 
 ## 7. 变更纪律
@@ -385,6 +408,16 @@ P0 ──► P1 ──► P2 ──► P3 ──► P4 ──► P5 ──► P6
 ---
 
 ## 8. 修订记录
+
+### R-05 P3 施工（2026-11-13）
+
+| # | 变更 | 依据 | 说明 |
+| --- | --- | --- | --- |
+| R-05.1 | N3-01 核对结果回填并修订 03 §5.1/§5.3 | 03 §5.7（硬前置工序） | DeepSeek：thinking 参数实为 `thinking:{type}` + `reasoning_effort`，思考档 temperature 被忽略（温度矩阵仅非思考档生效）；GLM-5.3 系强制思考、`disabled` 报错 → 弃 `thinking_type` 改 `reasoning_effort`。设计稿两节已同步修订（§5.7.1 留来源）。 |
+| R-05.2 | 自检/解析重试的耗尽语义落定 | 03 §1.3/§8 留白 | 解析耗尽（无可提交动作）→ `AdapterFailure` 上抛 → 引擎故障政策（代打）；自检耗尽（解析成功但动作非法）→ **按原样提交**——引擎驳回层接手（B-04 的"被驳回才耗预算"）。已集成测试双向覆盖。 |
+| R-05.3 | `action_in_legal` 提升至契约层 | 02 §3.1/B-04 | 语义成员判等（挑战目标集合语义）从 engine 私有函数提升到 `players/base.py`——引擎驳回与适配器自检共用同一实现，保证"自检通过 ⇒ 引擎必然接受"。 |
+| R-05.4 | 信封载体形态 | 02 §4.1（attachments = Mapping[str, str]） | 03 §4 信封整体 JSON 序列化为单键 `adapter_envelope`——引擎零解析原样存档，评测工具从 stream.jsonl 评测层取回。 |
+| R-05.5 | 真实 API 冒烟定位 | 计划 §4.4 | 三例冒烟测试（两家单决策 + 双 LLM vs bots 短局）`skipif` 无 key 跳过、永不进 CI；业主持键执行即完成 M4a 真实验收。 |
 
 ### R-04 P2 施工（2026-11-12）
 

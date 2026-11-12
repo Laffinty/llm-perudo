@@ -32,6 +32,7 @@ __all__ = [
     "Player",
     "PlayerView",
     "SignedBid",
+    "action_in_legal",
 ]
 
 
@@ -120,3 +121,26 @@ class Player(Protocol):
     def decide(self, view: PlayerView) -> Decision:
         """给定私有视图，返回一个决策（动作须取自合法动作集）。"""
         ...
+
+
+def action_in_legal(
+    action: BidAction | ChallengeAction | ResponseKind,
+    legal: tuple[BidAction | ChallengeAction | ResponseKind, ...],
+) -> bool:
+    """动作是否属于合法动作集（挑战目标按**集合语义**比较，R-29~R-32）。
+
+    契约级判等：引擎驳回（match.py）与适配器自检（B-04）共用同一实现，
+    保证"自检通过 ⇒ 引擎必然接受"。
+    """
+    from perudo.core.types import ChallengeAction as _CA
+
+    for candidate in legal:
+        if isinstance(action, _CA) and isinstance(candidate, _CA):
+            if action.kind is candidate.kind and frozenset(action.targets) == frozenset(
+                candidate.targets
+            ):
+                return True
+            continue
+        if action == candidate:
+            return True
+    return False

@@ -1,0 +1,22 @@
+# DeepSeek Pro 轨玩家示例（03 §7 配置规范；密钥永不落盘——env 引用）
+[player]
+provider = "deepseek"
+model    = "deepseek-v4-pro"
+api_key_ref = "env:DEEPSEEK_API_KEY"
+temperature = 0.9
+thinking = "low"
+self_check_retries = 2
+legal_actions_presentation = "constraints"
+
+[persona]
+name = "靓仔坤"
+style = "粤语话痨，输咗都要笑住饮"
+trash_talk = 2
+
+[phases.bidding]
+temperature = 0.9
+thinking = "off"          # 非思考档：温度矩阵生效（03 §5.7.1）
+
+[phases.respond]
+temperature = 0.7
+thinking = "high"         # 反杀/投降抉择，思考拉满（B-05）

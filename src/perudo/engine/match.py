@@ -48,7 +48,14 @@ from perudo.engine.rng import Rng, SplitMix64
 from perudo.engine.state import ChainState, MatchState, MatchStatus, transition_status
 from perudo.engine.stream import StreamRecorder, build_meta, write_meta
 from perudo.engine.views import build_view
-from perudo.players.base import Decision, Phase, Player, PlayerView, SignedBid
+from perudo.players.base import (
+    Decision,
+    Phase,
+    Player,
+    PlayerView,
+    SignedBid,
+    action_in_legal,
+)
 from perudo.players.bot import ConservativeBot
 
 __all__ = ["Match"]
@@ -378,7 +385,7 @@ class Match:
             legal = base_view.legal_actions
             view = replace(base_view, correction_reason=reason)
             decision, degraded, fault_reason = self._obtain(view, seat)
-            if _action_in_legal(decision.action, legal):
+            if action_in_legal(decision.action, legal):
                 if degraded:
                     self._emit(
                         EventType.TURN_DEGRADED,

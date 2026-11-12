@@ -1,0 +1,17 @@
+# GLM Flash 轨玩家示例（批量评测默认轨，03 §5.3）
+[player]
+provider = "glm"
+model    = "glm-5.3-flash"
+api_key_ref = "env:GLM_API_KEY"
+thinking = "auto"
+context_presentation = "full"
+legal_actions_presentation = "enumerate"
+history_depth = 20
+
+[persona]
+name = "细霞"
+style = "广州西关口音，嘴快过脑"
+trash_talk = 1
+
+[phases.respond]
+thinking = "low"          # 5.3 系不可关思考：off/low → reasoning_effort=low
