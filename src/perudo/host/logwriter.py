@@ -73,7 +73,8 @@ def _summary(event: Event) -> str:
         return f"开盅：{hands} 判定：{judgments or '（无开盅 stake）'}{darkness}"
     if kind == "RoundSettled":
         entries = "；".join(
-            f"{e.get('seat')}号 付 {e.get('codes')} 码（×{e.get('multiplier')}）"
+            f"{e.get('seat')}号 付 {e.get('codes')} 码"
+            + (f"（×{e.get('multiplier')}）" if e.get("multiplier") else "")
             for e in p.get("entries", [])
         )
         return f"第 {p.get('round_no')} 局结算：{entries or '（无输家）'}"
@@ -88,6 +89,11 @@ def _summary(event: Event) -> str:
         winners = ",".join(str(w) for w in p.get("winners", []))
         return f"终局（{p.get('reason')}）积分={p.get('scores')} 胜者={winners} 号"
     return str(p)[:200]
+
+
+def _bid_count_of(judgment: dict) -> object:
+    bid = judgment.get("bid")
+    return bid[0] if isinstance(bid, list) else "?"
 
 
 class MatchLogWriter:

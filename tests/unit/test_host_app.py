@@ -8,11 +8,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+# 两个 WS 全量回放用例在 TestClient 上存在收尾挂起（py-spy 栈实证：app close 后
+# receive Future 永不 resolve）——skip 待改真实端口客户端方案（计划 R-06 登记）
 import pytest
 from fastapi.testclient import TestClient
 
-# 两个 WS 全量回放用例在 TestClient 上存在收尾挂起（py-spy 栈实证：app close 后
-# receive Future 永不 resolve）——skip 待改真实端口客户端方案（计划 R-06 登记）
 SKIP_REASON = "starlette TestClient WS 收尾挂起，待改真实端口客户端（R-06）"
 
 from perudo.host.app import create_app
