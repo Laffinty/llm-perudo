@@ -226,3 +226,6 @@ __marimo__/
 /frontend/dist/
 # frontend/node_modules/ = Vite 前端依赖（P4 落地后生效）
 /frontend/node_modules/
+data_test_dbg/
+*.log
+!frontend/node_modules/.package-lock.json

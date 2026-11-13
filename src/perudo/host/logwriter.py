@@ -61,7 +61,8 @@ def _summary(event: Event) -> str:
         return f"{p.get('seat')} 号应牌：{p.get('choice')}{extra}{quote}"
     if kind == "Revealed":
         hands = "；".join(
-            f"{seat}=[{','.join(str(d) for d in dice)}]" for seat, dice in p.get("hands", {}).items()
+            f"{seat}=[{','.join(str(d) for d in dice)}]"
+            for seat, dice in p.get("hands", {}).items()
         )
         judgments = "；".join(
             f"{j.get('seat')}号 {j.get('count')}≥{j.get('bid', [0, 0])[0] if isinstance(j.get('bid'), list) else '?'}"

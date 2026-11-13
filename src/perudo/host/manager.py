@@ -15,10 +15,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from perudo.adapters.sdk.player import LLMPlayer
 from perudo.engine.config import MatchConfig
 from perudo.engine.events import Event, Visibility
 from perudo.engine.match import Match
-from perudo.adapters.sdk.player import LLMPlayer
 from perudo.host.human import HostHumanPlayer
 from perudo.host.logwriter import MatchLogWriter
 from perudo.players.base import Player
@@ -167,7 +167,12 @@ class MatchManager:
     def _build_llm(self, slot: dict[str, Any], index: int) -> LLMPlayer:
         from perudo.adapters.deepseek import make_player as make_deepseek
         from perudo.adapters.glm import make_player as make_glm
-        from perudo.adapters.sdk.config import AdapterConfig, PersonaConfig, QuoteConfig, default_base_url
+        from perudo.adapters.sdk.config import (
+            AdapterConfig,
+            PersonaConfig,
+            QuoteConfig,
+            default_base_url,
+        )
 
         provider = str(slot.get("provider", ""))
         factories = {"deepseek": make_deepseek, "glm": make_glm}

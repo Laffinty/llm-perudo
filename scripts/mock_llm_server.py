@@ -12,7 +12,6 @@ import json
 import re
 import sys
 
-import httpx
 from fastapi import FastAPI, Request
 
 app = FastAPI()
@@ -22,9 +21,7 @@ _ACTION = re.compile(r'\{"t":"(?:bid|challenge|response)"[^}]*\}')
 @app.post("/chat/completions")
 async def completions(request: Request) -> dict:
     body = await request.json()
-    user_text = next(
-        (m["content"] for m in reversed(body["messages"]) if m["role"] == "user"), ""
-    )
+    user_text = next((m["content"] for m in reversed(body["messages"]) if m["role"] == "user"), "")
     payloads = _ACTION.findall(user_text)
     thinking = "（mock 思考）我看了局面，从合法集里取第一个动作。"
     if payloads:
@@ -50,4 +47,9 @@ async def completions(request: Request) -> dict:
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="127.0.0.1", port=int(sys.argv[1]) if len(sys.argv) > 1 else 8901, log_level="warning")
+    uvicorn.run(
+        app,
+        host="127.0.0.1",
+        port=int(sys.argv[1]) if len(sys.argv) > 1 else 8901,
+        log_level="warning",
+    )

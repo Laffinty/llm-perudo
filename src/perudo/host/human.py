@@ -10,7 +10,6 @@ from __future__ import annotations
 import threading
 from collections.abc import Callable
 
-from perudo.core.types import Face, ResponseKind
 from perudo.engine.events import action_from_payload
 from perudo.players.base import Decision, Player, PlayerView
 
@@ -26,7 +25,9 @@ class HumanSeatTimeout(Exception):
 class HostHumanPlayer(Player):
     """PVE 人类席：decide 阻塞等待前端动作，submit 由 REST 注入。"""
 
-    def __init__(self, name: str, seat: int, on_action_required: Callable[[PlayerView], None] | None = None) -> None:
+    def __init__(
+        self, name: str, seat: int, on_action_required: Callable[[PlayerView], None] | None = None
+    ) -> None:
         self._name = name
         self._seat = seat
         self._on_action_required = on_action_required  # 回调：广播 ActionRequired

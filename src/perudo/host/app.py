@@ -102,13 +102,18 @@ def create_app(data_root: Path, *, dist_dir: Path | None = None) -> FastAPI:
 
     # ---------------------------------------------------------------- WS
     @app.websocket("/matches/{match_id}/stream")
-    async def match_stream(websocket: WebSocket, match_id: str, role: str = "spectator", last_seq: int | None = None) -> None:
+    async def match_stream(
+        websocket: WebSocket, match_id: str, role: str = "spectator", last_seq: int | None = None
+    ) -> None:
         await websocket.accept()
         try:
             handle, backlog, wake, unsubscribe = manager.subscribe(match_id, role, last_seq)
         except (MatchNotFoundError, ValueError) as error:
             await websocket.send_text(
-                json.dumps({"seq": 0, "type": "Error", "payload": {"detail": str(error)}}, ensure_ascii=False)
+                json.dumps(
+                    {"seq": 0, "type": "Error", "payload": {"detail": str(error)}},
+                    ensure_ascii=False,
+                )
             )
             await websocket.close(code=4404)
             return
