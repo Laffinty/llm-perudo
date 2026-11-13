@@ -11,12 +11,11 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from perudo.host.app import create_app
+
 # 两个 WS 全量回放用例在 TestClient 上存在收尾挂起（py-spy 栈实证：app close 后
 # receive Future 永不 resolve）——skip 待改真实端口客户端方案（计划 R-06 登记）
-
 SKIP_REASON = "starlette TestClient WS 收尾挂起，待改真实端口客户端（R-06）"
-
-from perudo.host.app import create_app
 
 _EVE_SPEC = {
     "mode": "eve",

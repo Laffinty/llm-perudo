@@ -92,12 +92,7 @@ def _summary(event: Event) -> str:
     return str(p)[:200]
 
 
-def _bid_count_of(judgment: dict) -> object:
-    bid = judgment.get("bid")
-    return bid[0] if isinstance(bid, list) else "?"
-
-
-def _bid_count_of(judgment: dict) -> object:
+def _bid_count_of(judgment: dict[str, object]) -> object:
     bid = judgment.get("bid")
     return bid[0] if isinstance(bid, list) else "?"
 
