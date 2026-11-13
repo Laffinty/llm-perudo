@@ -53,7 +53,8 @@ def _summary(event: Event) -> str:
         return f"{p.get('seat')} 号叫 {p.get('count')} 个 {p.get('face')}（{p.get('kind')}）{quote}"
     if kind == "ChallengeMade":
         targets = ",".join(str(t) for t in p.get("targets", []))
-        return f"{p.get('seat')} 号发起 {p.get('kind')} → 目标 {targets}（×{p.get('base_multiplier')}）"
+        mult = p.get("base_multiplier")
+        return f"{p.get('seat')} 号发起 {p.get('kind')} → 目标 {targets}（×{mult}）"
     if kind == "Responded":
         declared = p.get("declared_target")
         extra = f" 声明目标={declared}" if declared is not None else ""
@@ -65,7 +66,7 @@ def _summary(event: Event) -> str:
             for seat, dice in p.get("hands", {}).items()
         )
         judgments = "；".join(
-            f"{j.get('seat')}号 {j.get('count')}≥{j.get('bid', [0, 0])[0] if isinstance(j.get('bid'), list) else '?'}"
+            f"{j.get('seat')}号 {j.get('count')}≥{_bid_count_of(j)}"
             + ("成立" if j.get("stood") else "不成立")
             for j in p.get("judgments", [])
         )
@@ -89,6 +90,11 @@ def _summary(event: Event) -> str:
         winners = ",".join(str(w) for w in p.get("winners", []))
         return f"终局（{p.get('reason')}）积分={p.get('scores')} 胜者={winners} 号"
     return str(p)[:200]
+
+
+def _bid_count_of(judgment: dict) -> object:
+    bid = judgment.get("bid")
+    return bid[0] if isinstance(bid, list) else "?"
 
 
 def _bid_count_of(judgment: dict) -> object:

@@ -148,7 +148,9 @@ def create_app(data_root: Path, *, dist_dir: Path | None = None) -> FastAPI:
         @app.get("/")
         def index() -> dict[str, str]:
             return {
-                "detail": "前端构建产物缺失：请先执行 frontend 的 npm run build（产物 dist/ 由宿主托管）"
+                "detail": (
+                    "前端构建产物缺失：请先执行 frontend 的 npm run build（产物 dist/ 由宿主托管）"
+                )
             }
 
     return app
