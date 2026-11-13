@@ -18,6 +18,12 @@ from perudo.players.base import Decision, Phase, PlayerView
 __all__ = ["ConservativeBot"]
 
 
+def _no_growth_space(bid_actions: list[BidAction], view: PlayerView) -> bool:
+    """合法叫骰是否全部挤在数量上限上（同数量点数交替，无实质加叫）。"""
+    total = view.player_count * 5  # R-03：在场骰子总数 5N
+    return all(a.bid.count >= total for a in bid_actions)
+
+
 class ConservativeBot:
     """确定性保守机器人（A-18）。无内部状态，同视图必同决策。"""
 
@@ -31,9 +37,12 @@ class ConservativeBot:
     def decide(self, view: PlayerView) -> Decision:
         """按 02 §7 纪律从合法动作集中确定性选取。"""
         bid_actions = [a for a in view.legal_actions if isinstance(a, BidAction)]
-        if bid_actions:
+        if bid_actions and not _no_growth_space(bid_actions, view):
             cheapest = min(bid_actions, key=lambda a: (a.bid.count, a.bid.face))
             return Decision(action=cheapest)
+        # 无数量增长空间（全部为数量 == 上限的同数量点数交替，R-04.4⑤ 推广口径）：
+        # 视为无实质加叫 → 被迫杀（代价最小的杀类）——否则"永不主动杀"纪律
+        # 会让 FLY 态 (5N, 1)↔(5N, 6) 互刷永循环。规则层口径待 D-07 业主裁决。
         challenge_actions = [a for a in view.legal_actions if isinstance(a, ChallengeAction)]
         if challenge_actions:
             order = {

@@ -96,6 +96,7 @@ class Match:
         stream_path: Path | None = None,
         decision_log: Sequence[Decision] | None = None,
         rng: Rng | None = None,
+        event_sink: Any = None,
     ) -> Match:
         """创建桌局：冻结配置、开第一局（DRAFT → RUNNING，A-12）。
 
@@ -121,6 +122,7 @@ class Match:
             rng=rng if rng is not None else SplitMix64(seed),
             seed=seed,
             decision_log=list(decision_log) if decision_log is not None else None,
+            event_sink=event_sink,
         )
         if stream_path is not None:
             match._stream_path = stream_path
@@ -148,8 +150,10 @@ class Match:
         rng: Rng,
         seed: int,
         decision_log: list[Decision] | None,
+        event_sink: Any = None,
     ) -> None:
         self._state = state
+        self._event_sink = event_sink
         self._roster = roster
         self._rng = rng
         self._seed = seed
@@ -236,6 +240,8 @@ class Match:
         self._events.append(event)
         if self._recorder is not None:
             self._recorder.append(event)
+        if self._event_sink is not None:
+            self._event_sink(event)  # 宿主扇出钩子（P4）：实时转发，引擎零感知
 
     def _emit_fn(self) -> EmitFn:
         return lambda etype, visibility, payload: self._emit(etype, visibility, payload)
@@ -525,6 +531,8 @@ class Match:
                     "count": action.bid.count,
                     "face": int(action.bid.face),
                     "quote": quote,
+                    "wild_state": state.call_state.zhai.value,  # F-09：引擎预渲染
+                    "ones_called": state.call_state.ones_called,
                 },
             )
             nxt = self._next_active(seat)
@@ -608,7 +616,14 @@ class Match:
         self._emit(
             EventType.RESPONDED,
             Visibility.PUBLIC,
-            {"seat": seat, "choice": action.value, "quote": quote, "declared_target": declared},
+            {
+                "seat": seat,
+                "choice": action.value,
+                "quote": quote,
+                "declared_target": declared,
+                "wild_state": state.call_state.zhai.value,  # F-09：引擎预渲染
+                "ones_called": state.call_state.ones_called,
+            },
         )
         self._advance_chain(chain, seat, action)
 

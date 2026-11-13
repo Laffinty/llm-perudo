@@ -1,0 +1,74 @@
+:root {
+  --bg: #14161a;
+  --panel: #1d2026;
+  --panel-2: #242830;
+  --text: #e8eaf0;
+  --muted: #9aa1ad;
+  --accent: #6ea8fe;
+  --danger: #ff7a7a;
+  --ok: #7ee2a8;
+  --think-bg: #2a2d35;
+  font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); }
+#app { max-width: 1100px; margin: 0 auto; padding: 16px; }
+
+h1 { font-size: 20px; margin: 0 0 8px; }
+h2 { font-size: 15px; color: var(--muted); margin: 12px 0 6px; }
+button {
+  background: var(--panel-2); color: var(--text); border: 1px solid #3a404b;
+  border-radius: 6px; padding: 8px 14px; cursor: pointer; font-size: 14px;
+}
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: #10131a; border-color: var(--accent); font-weight: 600; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+input, select {
+  background: var(--panel-2); color: var(--text); border: 1px solid #3a404b;
+  border-radius: 6px; padding: 6px 10px; font-size: 14px;
+}
+label { display: block; color: var(--muted); font-size: 13px; margin: 8px 0 4px; }
+
+.panel { background: var(--panel); border: 1px solid #2c313b; border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+.row { display: flex; gap: 12px; align-items: center; }
+.spacer { flex: 1; }
+
+/* 聊天流 */
+.chat { height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px; }
+.bubble { border-radius: 10px; padding: 8px 12px; max-width: 92%; }
+.bubble .meta { font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+.bubble .badge {
+  display: inline-block; background: var(--panel-2); border: 1px solid #3a404b;
+  border-radius: 4px; padding: 1px 8px; margin-left: 8px; font-size: 13px; color: var(--accent);
+}
+/* 气泡三分纪律（04 §4）：台词=玩家发言角标；内心戏=内心角标灰底斜体；系统=无边框灰字 */
+.bubble-quote { background: var(--panel-2); border: 1px solid #3a404b; }
+.bubble-quote .tag { color: var(--accent); font-size: 12px; margin-right: 6px; }
+.bubble-think { background: var(--think-bg); border: 1px dashed #3a404b; font-style: italic; color: #b9bfca; }
+.bubble-think .tag { color: #8f96a3; font-size: 12px; margin-right: 6px; }
+.bubble-system { background: transparent; color: var(--muted); font-size: 14px; padding: 2px 12px; }
+.bubble-system.emphasis-challenge { color: var(--danger); font-weight: 600; }
+.bubble-system.emphasis-degrade { color: #ffb35c; }
+.bubble-system.emphasis-settle { color: var(--ok); }
+
+/* 骰盅卡 */
+.dice-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.dice-card {
+  background: var(--panel-2); border: 1px solid #3a404b; border-radius: 10px;
+  padding: 8px 12px; min-width: 128px;
+}
+.dice-card.leopard { border-color: var(--accent); box-shadow: 0 0 8px rgba(110, 168, 254, 0.35); }
+.dice-card .who { font-size: 12px; color: var(--muted); }
+.dice-card .dice { font-size: 20px; letter-spacing: 4px; }
+.dice-card .flag { font-size: 12px; color: var(--accent); }
+
+/* 状态栏 */
+.scoreboard div { display: flex; justify-content: space-between; padding: 3px 0; font-size: 14px; }
+.state-lamp { padding: 2px 10px; border-radius: 12px; font-size: 13px; display: inline-block; }
+.lamp-fly { background: #24406b; color: #9dc2ff; }
+.lamp-dead { background: #513a24; color: #ffcf9d; }
+
+/* LOG 抽屉 */
+.log-drawer { background: #101216; font-family: Consolas, monospace; font-size: 12px; color: #a9b1bd; height: 180px; overflow-y: auto; padding: 8px; border-radius: 8px; white-space: pre-wrap; }
+.log-toggle { color: var(--muted); cursor: pointer; font-size: 13px; }
