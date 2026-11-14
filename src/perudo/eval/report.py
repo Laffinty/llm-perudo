@@ -88,8 +88,7 @@ def render_batch_report(
         f"| E-11 | 台词率均值 | {a('E11_quote_rate_avg')} |",
         f"| E-12 | 挑衅词表命中均值 | {a('E12_taunt_hit_rate_avg')} |",
         f"| E-13 | 台词威慑相关均值 | {a('E13_taunt_deterrence_lift_avg')} |",
-        f"| E-14 | 均延迟 / 降级率 | {a('E14_latency_ms_avg')} / "
-        f"{a('E14_degradation_rate_avg')} |",
+        f"| E-14 | 均延迟 / 降级率 | {a('E14_latency_ms_avg')} / {a('E14_degradation_rate_avg')} |",
         f"| E-15 | thinking 覆盖均值 | {a('E15_thinking_coverage_avg')} |",
         "",
         "> 数字全部由程序产出；AI 评述（如有）另附且强制标注（05 §6.4 三禁）。",
