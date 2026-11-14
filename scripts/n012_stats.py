@@ -65,7 +65,6 @@ def run_stats_table(player_count: int, master_seed: int, table_index: int) -> di
             opened = True
 
     # 过 1 后含 1 叫骰占比（N-01 核心量）
-    face_one_total = sum(1 for b in bids if int(b.payload["face"]) == 1)
     ones_seen = False
     after_one_total = 0
     after_one_face_one = 0
@@ -113,7 +112,7 @@ def main(argv: list[str] | None = None) -> None:
         futures = {}
         table_index = 0
         for pc in player_counts:
-            for ti in range(args.tables):
+            for _ti in range(args.tables):
                 fut = pool.submit(run_stats_table, pc, args.master_seed, table_index)
                 futures[fut] = pc
                 table_index += 1

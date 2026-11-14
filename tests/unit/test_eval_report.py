@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from perudo.adapters.sdk.transport import CompletionResponse, Transport
 from perudo.engine.config import MatchConfig
 from perudo.engine.match import Match
