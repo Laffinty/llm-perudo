@@ -299,6 +299,39 @@
 | 思考深度 | `reasoning_effort: low / high / max`（默认 max） | B-05 映射：off/low→low、mid/high→high、auto→默认；"真关思考"不可达（已知降级） |
 | Flash/FlashX 型号 ID | `glm-5.3-flash` / `glm-5.3-flashx`（腾讯云在售列表确认） | `use_flashx` 落定 |
 
+**MiMo（核对日 2026-11-14，来源：mimo.mi.com 官方文档 Anthropic API 页 / Batch API 页 / 深度思考页）**：
+
+| 核对项 | 结果 | 对设计的影响 |
+| --- | --- | --- |
+| Anthropic 兼容端点 | `https://api.xiaomimimo.com/anthropic/v1/messages`（官方文档确认，双 Header 方式） | §5.2 双协议 Transport 落定：`protocol=anthropic` 时指向该端点 |
+| Batch API | 兼容 OpenAI；价格为实时 **50%**；支持 mimo-v2.6-pro/flash（2026-10-19 上线） | `batch_mode` 参数保留；实际接入随 P7 批量调度器（M4c） |
+| reasoning 字段 | 独立 `reasoning_content` 返回（不嵌正文）；深度经 model 切换或独立 reasoning 参数控制 | OpenAI 兼容协议下与其他家一致；`reasoning` 参数细节留持键实测 |
+
+**Qwen（核对日 2026-11-14，来源：阿里云百炼深度思考文档 / qwen.ai API 平台）**：
+
+| 核对项 | 结果 | 对设计的影响 |
+| --- | --- | --- |
+| 传参方式 | `enable_thinking` / `thinking_budget` **非 OpenAI 标准参数**：原生 HTTP 放请求体顶层；Python SDK 放 `extra_body` | Transport 的 extra_payload 直达请求体顶层（与官方口径一致） |
+| 计费 | 思考 token 按输出单价计费 | B-05 阶段化预算即省钱（low→1024 / high→8192 落定） |
+| 型号线 | qwen-plus（融合思考，可逐调用切换）/ qwen-flash / qwen3.8-max | §5.4 选型不变 |
+
+**豆包（核对日 2026-11-14，来源：火山引擎官方"Doubao豆包模型思考功能参数说明"、方舟平台）**：
+
+| 核对项 | 结果 | 对设计的影响 |
+| --- | --- | --- |
+| thinking 结构 | `thinking: {"type": "enabled" / "disabled" / "auto"}`——**auto = 自适应思考**（Seed1.6 起 adaptive thinking，2.1 延续） | §5.5 落定：三档映射；B-05 的 off→disabled、应牌→enabled |
+| model 双形态 | 型号名 或 `ep-` 开头推理接入点 ID 均可填 `model` 参数 | `model` 参数双支持确认（配置校验识别 ep- 形态） |
+| 型号线 | Doubao-Seed-2.1-Pro/Turbo（2026-06）；2.0-Lite 低价批量轨 | §5.5 选型不变 |
+
+**MiniMax（核对日 2026-11-14，来源：platform.minimax.io 官方文档 / M3.1-Flash 模型卡 / HuggingFace）**：
+
+| 核对项 | 结果 | 对设计的影响 |
+| --- | --- | --- |
+| API 型号名 | `MiniMax-M3.1-Flash`（$0.15/M 入、$0.60/M 出）；M3 旗舰同页 | §5.6 选型落定 |
+| 交错思考 | M3.1 原生 interleaved thinking：`<think>` 块需**剥离后经 reasoning_content 回传**（官方明确：防 chat template 破坏前缀缓存） | `strip_think_blocks` 钩子与官方口径一致（parsing.py 已实现）；多轮不回传思考正文 |
+| 思考深度 | 可调节思考深度——具体参数名未公开 | `thinking` 抽象档 auto→None（走默认），其余档留持键实测 |
+| speed 变体 | 未保留独立 highspeed 参数（M3.1-Flash 本体即快轨） | §5.6 `speed_variant` 参数移除（型号 ID 即档位） |
+
 ---
 
 ## 6. 六家横向对比与默认角色分配

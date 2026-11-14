@@ -1,0 +1,7 @@
+# MiniMax EVE 轨（交错思考剥离 + 前缀缓存）（03 §5 / §5.7.1 核对口径）
+
+[player]
+provider = "minimax"
+model    = "MiniMax-M3.1-Flash"
+api_key_ref = "env:MINIMAX_API_KEY"
+thinking = "auto"

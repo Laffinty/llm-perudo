@@ -1,0 +1,7 @@
+# Qwen 台词主推轨（粤语气质量）（03 §5 / §5.7.1 核对口径）
+
+[player]
+provider = "qwen"
+model    = "qwen-plus"
+api_key_ref = "env:QWEN_API_KEY"
+thinking = "auto"

@@ -270,7 +270,7 @@ P0 ──► P1 ──► P2 ──► P3 ──► P4 ──► P5 ──► P6
 | P3 | 适配器 SDK + 2 家（03 M4a） | M | P2 | **已完成（2026-11-13，离线口径；真实 API 冒烟持键待业主执行）** |
 | P4 | 宿主 + EVE 观战（04 W1） | M | P2、P3 | **已完成（2026-11-14，浏览器验收截图实证；2 个 WS 测试用例 skip 待修）** |
 | P5 | PVE + LOG（04 W2/W3） | M | P4 | **已完成（2026-11-14）** |
-| P6 | 其余 4 家（03 M4b） | M | P3 | 未开始（可与 P4/P5 并行） |
+| P6 | 其余 4 家（03 M4b） | M | P3 | **已完成（2026-11-14，离线口径；真实冒烟持键待业主）** |
 | P7 | 批量评测（M3） | L | P2（指标可提前）、P3（真实数据） | 未开始（指标模块可与 P3 并行） |
 | P8 | 收尾 | S | P7 | 未开始 |
 
@@ -445,6 +445,31 @@ P0 ──► P1 ──► P2 ──► P3 ──► P4 ──► P5 ──► P6
 
 **已知项**：①P5 浏览器验收以渲染截图 + REST 出牌驱动完成（IAB 交互通道故障延续，R-06.4）——人类席动作面板的实点击操作属人工浏览器操作不受影响；②全量 pytest ≈ 4 min（测试改短局后大幅缩短）。
 
+### P6 完成记录（2026-11-14）
+
+| P6 任务 | 产出 | 状态 |
+| --- | --- | --- |
+| MiMo（03 §5.2） | Tuning（Batch/自托管/降档参数位）+ **Anthropic Messages Transport**（双协议第二实现；端点 api.xiaomimimo.com/anthropic 核对落定；稳定前缀经顶层 system 天然满足） | 完成 |
+| Qwen（03 §5.4） | Tuning：`enable_thinking` + `thinking_budget` 阶段化（low→1024 / mid,high→8192，官方口径：请求体顶层/SDK extra_body） | 完成 |
+| 豆包（03 §5.5） | Tuning：`thinking: {type}` 三档（auto=自适应）+ `model` ep-/型号名双形态守门 | 完成 |
+| MiniMax（03 §5.6） | Tuning：`strip_think_blocks` 交错思考剥离（官方口径一致）+ `full/enumerate` 呈现默认（前缀缓存套利）；`speed_variant` 移除（核对：M3.1-Flash 本体即快轨，无独立参数） | 完成 |
+| 台词人格包（B-06） | `PersonaConfig`（名字/风格/trash_talk 0-3 + QuoteConfig 语言/模板）已在 P3 落地；本阶段补 **署名降级规则**（persona.name 缺省 → player.name → 配置文件名）+ 六份示例 TOML | 完成 |
+| 防注入红队测试（03 M4b 验收） | `test_adapters_redteam.py` 9 用例：输入侧四类典型注入载荷全部落引用块且系统声明恒在；输出侧伪 JSON 取第一个对象行为确定、think 块绝不混入动作/台词、伪系统标记拒绝 | 完成 |
+
+**N3-01 四家核对结果**（2026-11-14，已回填 03 §5.7.1，来源见该节）：MiMo Anthropic 端点与 Batch 半价确认；Qwen 非标准参数走请求体顶层；豆包 thinking 三档（auto=自适应）+ ep- 双形态；MiniMax 交错思考剥离口径与官方一致、无独立 speed 档。
+
+**验收标准对账**（§3 P6 表逐条）：
+
+| 验收标准 | 锚点 | 结果 |
+| --- | --- | --- |
+| 六家同桌 EVE 局跑通 | 03 M4b | **离线口径全通**（六家 get_tuning/工厂全注册 + mock Transport 全流程）；真实 API 冒烟持键执行（业主）——P3 真实冒烟模式适用 |
+| 台词无注入逃逸（红队用例集） | 03 §3 / 04 §4 | ✓ 红队 9 用例全绿（输入侧引用块+声明、输出侧行为确定） |
+| MiniMax 稳定前缀装配被强制 | 03 §5.6 | ✓ ContextBuilder 装配顺序规范（系统提示恒在前）+ presentation 默认 full/enumerate 单测 |
+
+**门禁**：G-lint ✓ / G-type ✓（strict 41 文件）/ G-test ✓（**155 passed + 3 skipped** + e2e 10）/ G-trace ✓ / G-mut ✓ / 依赖边界 ✓ / G-e2e ✓。
+
+**真实冒烟持键位**（业主）：各家单决策冒烟随 P3 模式扩展（`MIMO_API_KEY`/`ARK_API_KEY`/`MINIMAX_API_KEY`）；六家同桌 EVE 局待 P7 批量调度或手工开桌。
+
 ---
 
 ## 7. 变更纪律
@@ -456,6 +481,17 @@ P0 ──► P1 ──► P2 ──► P3 ──► P4 ──► P5 ──► P6
 ---
 
 ## 8. 修订记录
+
+### R-07 P6 施工（2026-11-14）
+
+| # | 变更 | 依据 | 说明 |
+| --- | --- | --- | --- |
+| R-07.1 | N3-01 四家核对结果回填并修订 03 §5.7.1 | 03 §5.7（硬前置工序） | MiMo Anthropic 端点 `api.xiaomimimo.com/anthropic` 与 Batch 半价确认；Qwen 非标准参数走请求体顶层/SDK extra_body；豆包 thinking 三档（auto=自适应）+ ep- 双形态；MiniMax 交错思考剥离口径官方一致、无独立 speed 档（§5.6 `speed_variant` 参数移除）。 |
+| R-07.2 | Anthropic Messages Transport（MiMo 双协议第二实现） | B-08 / 03 §5.2 | 组装抽纯函数 `build_anthropic_payload`（离线可测）；顶层 system 天然满足稳定前缀装配规范；仅 MiMo 注册该协议（B-08）。 |
+| R-07.3 | 署名降级规则 | 03 §2（人格为可选维度） | `load_player_config`：persona.name 缺省 → [player].name → 配置文件名——无 [persona] 段的配置不再被拒。 |
+| R-07.4 | 六份示例 TOML | 03 §7 | 新增 mimo_batch / qwen_talkative / doubao_fill / minimax_eve（含粤语人格模板说明）。 |
+| R-07.5 | 防注入红队测试集 | 03 M4b 验收 | 9 用例：输入侧四类典型载荷（伪指令+伪 JSON / 伪管理员 / 数据外泄 / 伪系统标记）全落引用块且系统声明恒在；输出侧伪 JSON 取第一个对象、think 块不混入、无 JSON 伪标记拒绝。 |
+| R-07.6 | 施工流程教训 | 工程事实 | 无 assert 的 `str.replace` 补丁静默失败再次发生（P5 已登记）——本次起 patch 一律带命中断言或改用 Edit 工具。shell PATH 损坏（coreutils 丢失）需手动修复并逐命令携带。 |
 
 ### R-06 P4 施工（2026-11-14）
 

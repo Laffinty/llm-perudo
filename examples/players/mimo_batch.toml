@@ -1,0 +1,7 @@
+# MiMo批量轨（Batch 半价 · P7 调度器接入）（03 §5 / §5.7.1 核对口径）
+
+[player]
+provider = "mimo"
+model    = "mimo-v2.6-flash"
+api_key_ref = "env:MIMO_API_KEY"
+thinking = "auto"

@@ -1,0 +1,7 @@
+# 豆包填充轨（或 ep- 接入点 ID）（03 §5 / §5.7.1 核对口径）
+
+[player]
+provider = "doubao"
+model    = "doubao-seed-2-1-turbo"
+api_key_ref = "env:ARK_API_KEY"
+thinking = "auto"

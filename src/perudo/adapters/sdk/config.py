@@ -153,8 +153,10 @@ def load_player_config(path: Path) -> AdapterConfig:
     base_url = str(player.get("base_url", "")) or default_base_url(provider)
 
     persona_raw = dict(raw.get("persona", {}))
+    # 署名降级：persona.name 缺省取 [player].name，再缺省取配置文件名（03 §2 人格为可选维度）
+    fallback_name = str(player.get("name", "")).strip() or path.stem
     persona = PersonaConfig(
-        name=str(persona_raw.get("name", "")),
+        name=str(persona_raw.get("name", "")) or fallback_name,
         style=str(persona_raw.get("style", "")),
         trash_talk=int(persona_raw.get("trash_talk", 0)),
     )
