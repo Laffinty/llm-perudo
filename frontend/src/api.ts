@@ -29,17 +29,34 @@ export async function matchState(matchId: string, action: string): Promise<Match
   return res.json();
 }
 
-export async function fetchPending(matchId: string): Promise<{ waiting: boolean; view?: unknown }> {
+export type PendingView = {
+  waiting: boolean;
+  view?: {
+    seat: number;
+    round_no: number;
+    phase: string;
+    my_hand: number[];
+    current_bid: number[] | null;
+    legal_actions: Record<string, unknown>[];
+    correction_reason: string;
+  };
+};
+
+export async function fetchPending(matchId: string): Promise<PendingView> {
   const res = await fetch(`/matches/${matchId}/pending`);
   if (!res.ok) return { waiting: false };
   return res.json();
 }
 
-export async function submitAction(matchId: string, action: Record<string, unknown>): Promise<void> {
+export async function submitAction(
+  matchId: string,
+  action: Record<string, unknown>,
+  quote = "",
+): Promise<void> {
   const res = await fetch(`/matches/${matchId}/action`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action }),
+    body: JSON.stringify({ action, quote }),
   });
   if (!res.ok) throw new Error((await res.json()).detail ?? `HTTP ${res.status}`);
 }
@@ -50,14 +67,18 @@ export function connectStream(
   role: string,
   onEnvelope: (e: Envelope) => void,
   onBacklogDone: () => void,
-  opts: { getLastSeq: () => number | null; reconnectMs?: number },
+  opts: { getLastSeq: () => number | null; reconnectMs?: number; seat?: number },
 ): { close: () => void } {
   let ws: WebSocket | null = null;
   let closed = false;
   let sawEnded = false;
   const connect = () => {
     const lastSeq = opts.getLastSeq();
-    const qs = lastSeq === null ? `role=${role}` : `role=${role}&last_seq=${lastSeq}`;
+    const seatQs = opts.seat !== undefined ? `&seat=${opts.seat}` : "";
+    const qs =
+      lastSeq === null
+        ? `role=${role}${seatQs}`
+        : `role=${role}&last_seq=${lastSeq}${seatQs}`;
     ws = new WebSocket(`ws://${location.host}/matches/${matchId}/stream?${qs}`);
     ws.onmessage = (msg) => {
       const envelope = JSON.parse(msg.data) as Envelope;
@@ -69,9 +90,12 @@ export function connectStream(
         console.error("stream error", envelope.payload);
         return;
       }
-      if (envelope.type === "MATCH_ENDED" || envelope.type === "MATCH_STATE_CHANGED") {
-        const status = (envelope.payload as { status?: string }).status;
-        if (envelope.type === "MATCH_ENDED" || status === "ABANDONED") sawEnded = true;
+      if (
+        envelope.type === "MatchEnded" ||
+        (envelope.type === "MatchStateChanged" &&
+          (envelope.payload as { status?: string }).status === "ABANDONED")
+      ) {
+        sawEnded = true;
       }
       onEnvelope(envelope);
     };

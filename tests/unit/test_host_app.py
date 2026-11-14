@@ -100,7 +100,6 @@ def test_spectator_ws_full_replay_then_live(live_server) -> None:
     真实端口 + websockets 客户端（R-06.2：TestClient WS 收尾挂起的绕行方案）。
     三层纪律：DecisionFacts（评测层）不进呈现流；HandShaken（私密层）不进观战流。
     """
-    import time as _time
 
     import httpx
     from websockets.exceptions import ConnectionClosed
@@ -112,15 +111,12 @@ def test_spectator_ws_full_replay_then_live(live_server) -> None:
     types_seen: list[str] = []
     ended_seen = False
     backlog_done = False
-    deadline = _time.time() + 90
     try:
-        while _time.time() < deadline:
-            try:
-                envelope = json.loads(ws.recv(timeout=5))
-            except TimeoutError:
-                continue
-            except ConnectionClosed:
-                break  # 服务端终局收束（A-10b 叙事完结）
+        # 无超时 recv：websockets sync 的 recv 超时后连接不可恢复（R-06.2 教训）；
+        # 服务端在终局发送 MatchEnded 后主动 close（A-10b 叙事完结），recv 以
+        # ConnectionClosed 收束——事件流完整到达是服务端保证，测试只管消费。
+        while True:
+            envelope = json.loads(ws.recv())
             types_seen.append(envelope["type"])
             if envelope["type"] == "BacklogDone":
                 backlog_done = True
@@ -128,13 +124,15 @@ def test_spectator_ws_full_replay_then_live(live_server) -> None:
             if envelope["type"] == "MatchEnded":
                 ended_seen = True
                 break
-        assert backlog_done and ended_seen
-        assert "MatchStarted" in types_seen
-        assert "DecisionFacts" not in types_seen, "评测层永不进呈现流（05 §4.1）"
-        assert "HandShaken" not in types_seen, "观战流不推私密手牌（用 HandObserved 投影）"
-        assert "HandObserved" in types_seen, "纯 EVE 桌观战流必含骰盅投影（05 G-01）"
+    except ConnectionClosed:
+        pass
     finally:
         ws.close()
+    assert backlog_done and ended_seen
+    assert "MatchStarted" in types_seen
+    assert "DecisionFacts" not in types_seen, "评测层永不进呈现流（05 §4.1）"
+    assert "HandShaken" not in types_seen, "观战流不推私密手牌（用 HandObserved 投影）"
+    assert "HandObserved" in types_seen, "纯 EVE 桌观战流必含骰盅投影（05 G-01）"
 
 
 def test_spectator_ws_incremental_after_seq(client: TestClient) -> None:

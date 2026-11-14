@@ -14,12 +14,13 @@ const summary = ref<MatchSummary | null>(null);
 const endedSummary = ref<MatchSummary | null>(null);
 const lastSpec = ref<{ mode: string; slots: unknown[]; config: Record<string, unknown> } | null>(null);
 
-// URL 直达：/?match=<id> 断线恢复入口（G-02 全量重放）
-const urlMatch = new URLSearchParams(location.search).get("match");
+// URL 直达：/?match=<id>&mode=eve|pve —— 断线恢复入口（G-02 全量重放）
+const urlParams = new URLSearchParams(location.search);
+const urlMatch = urlParams.get("match");
 if (urlMatch) {
   page.value = "match";
   matchId.value = urlMatch;
-  mode.value = "eve";
+  mode.value = (urlParams.get("mode") as "eve" | "pve") ?? "eve";
 }
 
 function onMatchStarted(s: MatchSummary, spec: { mode: string; slots: unknown[]; config: Record<string, unknown> }) {
@@ -27,6 +28,13 @@ function onMatchStarted(s: MatchSummary, spec: { mode: string; slots: unknown[];
   mode.value = spec.mode as "eve" | "pve";
   summary.value = s;
   lastSpec.value = spec;
+  page.value = "match";
+}
+
+function onOpenMatch(s: MatchSummary) {
+  matchId.value = s.match_id;
+  mode.value = s.mode as "eve" | "pve";
+  summary.value = s;
   page.value = "match";
 }
 
@@ -49,7 +57,7 @@ async function rematch() {
     <div class="spacer" />
     <span v-if="summary" style="color: var(--muted); font-size: 13px">{{ summary.match_id }}</span>
   </header>
-  <WizardPage v-if="page === 'wizard'" @started="onMatchStarted" />
+  <WizardPage v-if="page === 'wizard'" @started="onMatchStarted" @open="onOpenMatch" />
   <MatchPage
     v-else-if="page === 'match' && matchId"
     :match-id="matchId"

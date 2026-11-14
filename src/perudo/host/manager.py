@@ -34,6 +34,7 @@ class MatchNotFoundError(KeyError):
 @dataclass
 class _Subscriber:
     role: str
+    seat: int
     wake: threading.Event
     queue: list[Event]
 
@@ -43,7 +44,7 @@ class MatchHandle:
     """一桌运行中桌局的宿主侧全部状态。"""
 
     match_id: str
-    match: Match
+    match: Match | None  # 占位创建期为 None（人类席回调先于 Match.create）
     mode: str  # eve / pve
     events: list[Event] = field(default_factory=list)  # 全量缓存（G-02 补发）
     log_writer: MatchLogWriter | None = None
@@ -54,6 +55,7 @@ class MatchHandle:
     created_at: str = ""
 
     def snapshot(self) -> dict[str, Any]:
+        assert self.match is not None, "驱动阶段 match 必已创建（占位仅存在于构造间隙）"
         return {
             "match_id": self.match_id,
             "mode": self.mode,
@@ -98,6 +100,12 @@ class MatchManager:
         if mode == "eve" and any(s.get("kind") == "human" for s in slots):
             raise ValueError("EVE 桌不得含人类席（F-02：观战流仅纯 EVE）")
 
+        # handle 先行占位：人类席回调需引用 handle 做扇出（decide 运行时才触发，闭包安全）
+        handle_placeholder = MatchHandle(
+            match_id="",
+            match=None,
+            mode=mode,
+        )
         players: list[Player] = []
         human: HostHumanPlayer | None = None
         for index, slot in enumerate(slots):
@@ -105,7 +113,12 @@ class MatchManager:
             if kind == "bot":
                 players.append(ConservativeBot(str(slot.get("name", f"bot{index}"))))
             elif kind == "human":
-                human = HostHumanPlayer(str(slot.get("name", "人类")), index)
+                seat = index
+
+                def on_action_required(view: Any, _seat: int = seat) -> None:
+                    self._broadcast_action_required(handle_placeholder, _seat, view)
+
+                human = HostHumanPlayer(str(slot.get("name", "人类")), seat, on_action_required)
                 players.append(human)
             elif kind == "llm":
                 players.append(self._build_llm(slot, index))
@@ -128,14 +141,11 @@ class MatchManager:
         stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         log_path = match_dir / "log" / f"match_{stamp}_{mode}.log"
 
-        handle = MatchHandle(
-            match_id=match_id,
-            match=None,  # type: ignore[arg-type]
-            mode=mode,
-            log_path=log_path,
-            human=human,
-            created_at=datetime.datetime.now().isoformat(timespec="seconds"),
-        )
+        handle = handle_placeholder
+        handle.match_id = match_id
+        handle.log_path = log_path
+        handle.human = human
+        handle.created_at = datetime.datetime.now().isoformat(timespec="seconds")
         handle.log_writer = MatchLogWriter(log_path)
 
         def sink(event: Event) -> None:
@@ -146,7 +156,7 @@ class MatchManager:
             if handle.log_writer is not None:
                 handle.log_writer.append(event)
             for sub in subscribers:
-                if self._visible(event, sub.role):
+                if self._visible(event, sub.role, sub.seat):
                     sub.queue.append(event)
                     sub.wake.set()
 
@@ -208,6 +218,7 @@ class MatchManager:
 
     # ------------------------------------------------------------------ 驱动
     def _start_thread(self, handle: MatchHandle) -> None:
+        assert handle.match is not None, "启动线程前 match 必已创建"
         thread = threading.Thread(
             target=self._run, args=(handle,), daemon=True, name=f"match-{handle.match_id}"
         )
@@ -215,8 +226,10 @@ class MatchManager:
         thread.start()
 
     def _run(self, handle: MatchHandle) -> None:
+        match = handle.match
+        assert match is not None, "驱动线程启动时 match 必已创建"
         try:
-            handle.match.run_to_end()
+            match.run_to_end()
         except Exception as error:  # noqa: BLE001 —— 宿主兜底：线程异常不静默
             import traceback
 
@@ -226,6 +239,7 @@ class MatchManager:
     # ------------------------------------------------------------------ 状态
     def transition(self, match_id: str, action: str) -> dict[str, Any]:
         handle = self.get(match_id)
+        assert handle.match is not None, "状态转移要求 match 已创建"
         if action == "suspend":
             handle.match.suspend()
         elif action == "resume":
@@ -240,7 +254,7 @@ class MatchManager:
 
     # ------------------------------------------------------------------ 扇出
     def subscribe(
-        self, match_id: str, role: str, after_seq: int | None
+        self, match_id: str, role: str, after_seq: int | None, seat: int = 0
     ) -> tuple[MatchHandle, list[Event], threading.Event, Callable[[], None]]:
         """订阅视图流：返回（句柄, 补发事件, 唤醒事件, 退订闭包）。
 
@@ -257,7 +271,23 @@ class MatchManager:
             backlog = list(visible)  # 全量重放
         else:
             backlog = [e for e in visible if e.seq > after_seq]  # 增量补发
-        sub = _Subscriber(role=role, wake=threading.Event(), queue=[])
+        # 人类席等待动作 → 订阅时补发当前 ActionRequired 快照（状态而非历史事件；
+        # 前端动作面板的 WS 主通道，与 REST /pending 轮询互为冗余）
+        if role == "player" and handle.human is not None:
+            pending = handle.human.pending_view
+            if pending is not None:
+                backlog.append(
+                    Event(
+                        seq=0,
+                        type="ActionRequired",
+                        visibility=Visibility.PUBLIC,
+                        payload={
+                            "seat": handle.human.seat,
+                            "view": handle.human.snapshot_pending(),
+                        },
+                    )
+                )
+        sub = _Subscriber(role=role, seat=seat, wake=threading.Event(), queue=[])
         handle.subscribers.append(sub)
         handle_ref = handle
 
@@ -268,13 +298,32 @@ class MatchManager:
 
         return handle, backlog, sub.wake, unsubscribe
 
-    def _visible(self, event: Event, role: str) -> bool:
+    def _visible(self, event: Event, role: str, seat: int = 0) -> bool:
+        # F-06：PVE 玩家流不出现内心戏（ThinkingObserved 虽为公开层，玩家流排除）
+        if role == "player" and event.type == "ThinkingObserved":
+            return False
         if event.visibility is Visibility.PUBLIC:
             return True
         if event.visibility is Visibility.PRIVATE and role == "player":
-            # 玩家流：本人 HandShaken（W2 接线真实席位；W1 无玩家流场景）
-            return event.type == "HandShaken"
+            # 玩家流：本人 HandShaken（F-02 视图纪律）
+            return event.type == "HandShaken" and event.payload.get("seat") == seat
         return False  # EVAL 层永不进呈现流（05 §4.1）
+
+    def _broadcast_action_required(self, handle: MatchHandle, seat: int, view: Any) -> None:
+        """人类席等待动作的宿主提示（04 §3.2 动作面板数据源；不入权威流缓存）。"""
+        snapshot = handle.human.snapshot_pending() if handle.human else None
+        event = Event(
+            seq=0,
+            type="ActionRequired",
+            visibility=Visibility.PUBLIC,
+            payload={"seat": seat, "view": snapshot or {}},
+        )
+        with self._lock:
+            subscribers = list(handle.subscribers)
+        for sub in subscribers:
+            if sub.role == "player":
+                sub.queue.append(event)
+                sub.wake.set()
 
     def _system_message(self, handle: MatchHandle, text: str) -> None:
         """宿主界面级系统消息（非引擎事件；进 LOG 与扇出，不入权威流）。"""

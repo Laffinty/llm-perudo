@@ -65,8 +65,11 @@ class HostHumanPlayer(Player):
         assert self._decision is not None
         return self._decision
 
-    def submit(self, action_payload: dict[str, object]) -> None:
-        """REST 注入动作（engine.events 动作编码形态）；非法动作按引擎纠错路径走。"""
+    def submit(self, action_payload: dict[str, object], quote: str = "") -> None:
+        """REST 注入动作与台词（02 §4 C 混合：动作结构化、台词自由文本）。
+
+        非法动作按引擎纠错路径走（decide 抛错 → 引擎驳回 → 纠错重提交）。
+        """
         try:
             action = action_from_payload(action_payload)
         except (KeyError, ValueError, TypeError) as error:
@@ -75,7 +78,7 @@ class HostHumanPlayer(Player):
             self._event.set()
             return
         with self._lock:
-            self._decision = Decision(action=action)
+            self._decision = Decision(action=action, quote=quote)
         self._event.set()
 
     def snapshot_pending(self) -> dict[str, object] | None:

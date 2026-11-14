@@ -71,7 +71,8 @@ def create_app(data_root: Path, *, dist_dir: Path | None = None) -> FastAPI:
         payload = body.get("action")
         if not isinstance(payload, dict):
             raise HTTPException(status_code=422, detail="action 必须为动作对象")
-        handle.human.submit(payload)
+        quote = str(body.get("quote", ""))
+        handle.human.submit(payload, quote)
         return {"submitted": True}
 
     @app.get("/matches/{match_id}/pending")
@@ -106,8 +107,25 @@ def create_app(data_root: Path, *, dist_dir: Path | None = None) -> FastAPI:
         websocket: WebSocket, match_id: str, role: str = "spectator", last_seq: int | None = None
     ) -> None:
         await websocket.accept()
+        seat = 0
+        if role == "player":
+            seat_param = websocket.query_params.get("seat")
+            if seat_param is None:
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "seq": 0,
+                            "type": "Error",
+                            "payload": {"detail": "玩家流必须带 seat 参数（F-02）"},
+                        },
+                        ensure_ascii=False,
+                    )
+                )
+                await websocket.close(code=4400)
+                return
+            seat = int(seat_param)
         try:
-            handle, backlog, wake, unsubscribe = manager.subscribe(match_id, role, last_seq)
+            handle, backlog, wake, unsubscribe = manager.subscribe(match_id, role, last_seq, seat)
         except (MatchNotFoundError, ValueError) as error:
             await websocket.send_text(
                 json.dumps(
