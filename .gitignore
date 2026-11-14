@@ -229,3 +229,5 @@ __marimo__/
 data_test_dbg/
 *.log
 !frontend/node_modules/.package-lock.json
+data_dbg*/
+data*/
