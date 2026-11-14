@@ -13,8 +13,6 @@ from __future__ import annotations
 import argparse
 import json
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
-from typing import Any
 
 from perudo.engine.match import Match
 from perudo.engine.rng import derive_seed

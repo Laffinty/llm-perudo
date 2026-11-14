@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
 from perudo.adapters.sdk.transport import CompletionResponse, Transport
 from perudo.engine.config import MatchConfig
 from perudo.engine.match import Match

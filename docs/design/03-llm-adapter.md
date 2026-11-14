@@ -402,7 +402,7 @@ thinking = "high"                            # 反杀/投降抉择，思考拉�
 | --- | --- | --- |
 | N3-01 | §5.7 各家 thinking 字段的当期核对 | 每家实现前执行，核对结果回填本文 |
 | N3-02 | 粤语台词质量与攻击等级的量化评测 | 05 文档（行为面） |
-| N3-03 | Anthropic 协议 Transport 的优先级 | M4b 后按 MiMo 实测收益决定 |
+| N3-03 | Anthropic 协议 Transport 的优先级 | **已落地（P6）**：`sdk.anthropic_transport.AnthropicMessagesTransport`（组装纯函数离线可测）；实测收益随持键评测 |
 | N3-04 | 模型线时效（六家迭代极快） | 型号 ID 全部走配置，不做硬编码；大版本更迭走配置变更而非代码变更 |
 
 ---
