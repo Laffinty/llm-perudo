@@ -113,6 +113,7 @@ class MatchLogWriter:
     def append(self, event: Event) -> None:
         now = datetime.datetime.now()
         self._handle.write(render_event_line(event, now) + "\n")
+        self._handle.flush()  # F-04"边打边写"：逐事件立即可见（无缓冲滞留，R-06.2）
         self.lines += 1
 
     def close(self) -> None:

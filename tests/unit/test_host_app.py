@@ -6,16 +6,13 @@
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 from perudo.host.app import create_app
-
-# 两个 WS 全量回放用例在 TestClient 上存在收尾挂起（py-spy 栈实证：app close 后
-# receive Future 永不 resolve）——skip 待改真实端口客户端方案（计划 R-06 登记）
-SKIP_REASON = "starlette TestClient WS 收尾挂起，待改真实端口客户端（R-06）"
 
 _EVE_SPEC = {
     "mode": "eve",
@@ -28,6 +25,26 @@ _EVE_SPEC = {
 def client(tmp_path: Path) -> TestClient:
     app = create_app(tmp_path)
     return TestClient(app)
+
+
+@pytest.fixture()
+def live_server(tmp_path: Path):
+    """真实端口 uvicorn（绕开 TestClient 的 WS 收尾挂起，R-06.2 方案）。"""
+    import threading
+
+    import uvicorn
+
+    app = create_app(tmp_path)
+    config = uvicorn.Config(app, host="127.0.0.1", port=0, log_level="warning")
+    server = uvicorn.Server(config)
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    while not server.started:
+        time.sleep(0.05)
+    port = server.servers[0].sockets[0].getsockname()[1]
+    yield f"http://127.0.0.1:{port}", port
+    server.should_exit = True
+    thread.join(timeout=5)
 
 
 def _wait_ended(client: TestClient, match_id: str, timeout_s: float = 30.0) -> None:
@@ -77,32 +94,47 @@ def test_spec_validation(client: TestClient) -> None:
     assert client.post("/matches", json=unknown).status_code == 422
 
 
-@pytest.mark.skip(reason=SKIP_REASON)
-def test_spectator_ws_full_replay_then_live(client: TestClient) -> None:
+def test_spectator_ws_full_replay_then_live(live_server) -> None:
     """观战流（F-02）：全量回放 → BacklogDone → 实时事件直至 MATCH_ENDED。
 
+    真实端口 + websockets 客户端（R-06.2：TestClient WS 收尾挂起的绕行方案）。
     三层纪律：DecisionFacts（评测层）不进呈现流；HandShaken（私密层）不进观战流。
     """
-    created = client.post("/matches", json=_EVE_SPEC)
-    match_id = created.json()["match_id"]
-    with client.websocket_connect(f"/matches/{match_id}/stream?role=spectator") as ws:
-        types_seen: list[str] = []
-        ended_seen = False
-        backlog_done = False
-        for _ in range(100_000):
-            envelope = json.loads(ws.receive_text())
+    import time as _time
+
+    import httpx
+    from websockets.exceptions import ConnectionClosed
+    from websockets.sync.client import connect as ws_connect
+
+    base, ws_port = live_server
+    match_id = httpx.post(f"{base}/matches", json=_EVE_SPEC).json()["match_id"]
+    ws = ws_connect(f"ws://127.0.0.1:{ws_port}/matches/{match_id}/stream?role=spectator")
+    types_seen: list[str] = []
+    ended_seen = False
+    backlog_done = False
+    deadline = _time.time() + 90
+    try:
+        while _time.time() < deadline:
+            try:
+                envelope = json.loads(ws.recv(timeout=5))
+            except TimeoutError:
+                continue
+            except ConnectionClosed:
+                break  # 服务端终局收束（A-10b 叙事完结）
             types_seen.append(envelope["type"])
             if envelope["type"] == "BacklogDone":
                 backlog_done = True
                 assert isinstance(envelope["seq"], int)
-            if envelope["type"] == "MATCH_ENDED":
+            if envelope["type"] == "MatchEnded":
                 ended_seen = True
                 break
         assert backlog_done and ended_seen
-        assert "MATCH_STARTED" in types_seen
+        assert "MatchStarted" in types_seen
         assert "DecisionFacts" not in types_seen, "评测层永不进呈现流（05 §4.1）"
         assert "HandShaken" not in types_seen, "观战流不推私密手牌（用 HandObserved 投影）"
         assert "HandObserved" in types_seen, "纯 EVE 桌观战流必含骰盅投影（05 G-01）"
+    finally:
+        ws.close()
 
 
 def test_spectator_ws_incremental_after_seq(client: TestClient) -> None:
@@ -129,10 +161,19 @@ def test_spectator_stream_rejected_for_pve(client: TestClient) -> None:
         assert envelope["type"] == "Error" and "仅纯 EVE" in envelope["payload"]["detail"]
 
 
-@pytest.mark.skip(reason=SKIP_REASON)
 def test_log_writer_streams_to_disk(client: TestClient, tmp_path: Path) -> None:
-    """F-04：边打边写——LOG 文件随对局逐行增长，含事件标签与终局行。"""
-    created = client.post("/matches", json=_EVE_SPEC)
+    """F-04：边打边写——LOG 文件随对局逐行增长，含事件标签与终局行。
+
+    max_rounds=3 保险丝触发终局（每局满叫爬升近百手，等 6 码过慢）。
+    """
+    created = client.post(
+        "/matches",
+        json={
+            "mode": "eve",
+            "slots": _EVE_SPEC["slots"],
+            "config": {"end_threshold": 6, "max_rounds": 3},
+        },
+    )
     summary = created.json()
     match_id = summary["match_id"]
     _wait_ended(client, match_id)

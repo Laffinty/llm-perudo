@@ -125,12 +125,15 @@ def create_app(data_root: Path, *, dist_dir: Path | None = None) -> FastAPI:
                 json.dumps({"seq": latest_seq, "type": "BacklogDone", "payload": {}}, default=str)
             )
             while True:
-                await asyncio.to_thread(wake.wait, 5.0)
+                try:
+                    await asyncio.to_thread(wake.wait, 5.0)
+                except RuntimeError:
+                    return  # 事件循环关停中（宿主退出），连接随进程终结
                 for event in _drain(handle, wake):
                     await websocket.send_text(_envelope_json(event))
                     # 终局/弃局即服务端收束（A-10b 叙事完结；重连按 last_seq 取历史）
-                    if event.type in ("MATCH_ENDED",) or (
-                        event.type == "MATCH_STATE_CHANGED"
+                    if event.type in ("MatchEnded",) or (
+                        event.type == "MatchStateChanged"
                         and event.payload.get("status") == "ABANDONED"
                     ):
                         await websocket.close()

@@ -1,0 +1,41 @@
+{
+  "abandoned": false,
+  "config": {
+    "correction_budget": 2,
+    "end_threshold": 6,
+    "fault_retries": 3,
+    "first_caller": null,
+    "max_rounds": 3,
+    "player_count": 4,
+    "quote_max_len": 200,
+    "rules": {
+      "all_ones_eight": false,
+      "bid_cap": "five_n",
+      "counter_on_open": false,
+      "darkness": false,
+      "direction": "clockwise",
+      "drink_along": false,
+      "half_double": true,
+      "jump_fail_double": true,
+      "leopard_bonus": true,
+      "leopard_double": true,
+      "multi_win_double_threshold": 3,
+      "player_cap": 6,
+      "reroll_limit": 3,
+      "scattered": "reshake",
+      "stake_label": "1 份",
+      "straight": "reshake",
+      "surrender_floor_one": true
+    },
+    "spectated": true
+  },
+  "match_id": "m_20261114080645_eve_5D7D",
+  "roster": [
+    "bot0",
+    "bot1",
+    "bot2",
+    "bot3"
+  ],
+  "seed": 3763076318799671809,
+  "status": "ENDED"
+}
